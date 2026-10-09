@@ -161,6 +161,47 @@ try {
   const frozen = await A.client.from("appointments").select("price_at_booking, duration_minutes_at_booking").eq("id", apA.data.id).single();
   check("histórico preservado ao mudar o serviço", Number(frozen.data?.price_at_booking) === 50 && frozen.data?.duration_minutes_at_booking === 40, JSON.stringify(frozen.data));
 
+  // ---- consultas da Etapa 4 (mesmas strings usadas em src/lib/data/*.ts)
+  const COLS = "id, full_name, phone, notes, archived_at";
+  const byName = await B.client.from("clients").select(COLS).is("archived_at", null).or("full_name.ilike.*__teste__ cli*");
+  check("busca por nome (ilike) encontra a cliente", byName.data?.some((c) => c.id === cli.id), msg(byName.error));
+  const byPhone = await B.client.from("clients").select(COLS).is("archived_at", null).or("full_name.ilike.*zzz-nao-existe*,phone.ilike.*5511999990000*");
+  check("busca por telefone encontra a cliente", byPhone.data?.some((c) => c.id === cli.id), msg(byPhone.error));
+  const byNone = await B.client.from("clients").select(COLS).is("archived_at", null).or("full_name.ilike.*zzz-nao-existe*");
+  check("busca sem resultado retorna lista vazia", !byNone.error && byNone.data.length === 0, msg(byNone.error));
+  const phoneDup = await B.client.from("clients").select("id, full_name, archived_at").eq("phone", "5511999990000").limit(5);
+  check("verificação de telefone repetido encontra os 2 cadastros", phoneDup.data?.length === 2, String(phoneDup.data?.length));
+
+  const hist = await B.client
+    .from("appointments")
+    .select("id, start_at, status, price_at_booking, duration_minutes_at_booking, professionals(display_name), services(name)")
+    .eq("client_id", cli.id)
+    .order("start_at", { ascending: false });
+  check("histórico traz profissional e serviço (relações) e inclui cancelados/pendentes",
+    !hist.error && hist.data.length >= 3 && hist.data.every((h) => h.professionals?.display_name && h.services?.name),
+    msg(hist.error) + " " + JSON.stringify(hist.data?.[0]));
+  check("histórico em ordem do mais recente para o mais antigo",
+    hist.data?.every((h, i, arr) => i === 0 || arr[i - 1].start_at >= h.start_at));
+
+  const arch = await B.client.from("clients").update({ archived_at: new Date().toISOString() }).eq("id", cli.id).select("id");
+  check("B arquiva a cliente (sem apagar)", arch.data?.length === 1, msg(arch.error));
+  const activeList = await A.client.from("clients").select("id").is("archived_at", null).eq("id", cli.id);
+  check("cliente arquivada some da lista ativa", activeList.data?.length === 0);
+  const archList = await A.client.from("clients").select("id").not("archived_at", "is", null).eq("id", cli.id);
+  check("cliente arquivada aparece na lista de arquivadas", archList.data?.length === 1);
+  const stillHist = await A.client.from("appointments").select("id").eq("client_id", cli.id);
+  check("arquivar não apaga o histórico de atendimentos", stillHist.data?.length >= 3, String(stillHist.data?.length));
+  await A.client.from("clients").update({ archived_at: null }).eq("id", cli.id);
+
+  const deact = await A.client.from("services").update({ active: false }).eq("id", svcA.data.id).select("id, active");
+  check("A desativa o próprio serviço", deact.data?.[0]?.active === false, msg(deact.error));
+  const histAfter = await A.client.from("appointments").select("id, services(name)").eq("id", apA.data.id).single();
+  check("serviço desativado continua aparecendo no histórico", Boolean(histAfter.data?.services?.name), msg(histAfter.error));
+  const deactByB = await B.client.from("services").update({ active: false }).eq("id", svcA.data.id).select("id");
+  check("B NÃO desativa serviço da A", (deactByB.data ?? []).length === 0);
+  const colleagueSvc = await B.client.from("services").select("id").eq("professional_id", proA.id);
+  check("B enxerga os serviços da A (somente leitura)", (colleagueSvc.data ?? []).length >= 1, msg(colleagueSvc.error));
+
   // ---- permissões administrativas
   const member = await A.client.from("salon_members").insert({ salon_id: salonId, user_id: B.userId });
   check("A não mexe em membros do salão", Boolean(member.error), "inseriu");

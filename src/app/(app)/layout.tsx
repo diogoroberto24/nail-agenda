@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { AuthGate } from "@/components/layout/auth-gate";
-import { BottomNav } from "@/components/layout/bottom-nav";
+import { BottomNav, BottomNavView } from "@/components/layout/bottom-nav";
 import { NewAppointmentFab } from "@/components/layout/new-appointment-fab";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -13,8 +13,13 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <AuthGate>{children}</AuthGate>
         </Suspense>
       </main>
-      <NewAppointmentFab />
-      <BottomNav />
+      {/* usePathname precisa de Suspense em rotas dinâmicas ([id]); o fallback mostra a barra sem item ativo */}
+      <Suspense fallback={null}>
+        <NewAppointmentFab />
+      </Suspense>
+      <Suspense fallback={<BottomNavView pathname="" />}>
+        <BottomNav />
+      </Suspense>
     </>
   );
 }

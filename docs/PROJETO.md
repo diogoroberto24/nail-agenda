@@ -54,11 +54,20 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Contas criadas por `npm run seed` (chave secreta, só local). Cadastro público desligado no painel.
 - Formulários: React Hook Form + Zod; validação repetida no servidor.
 
+## Etapa 4 — clientes e serviços
+- Clientes (cadastro compartilhado): lista com busca por nome/telefone (URL ?q=), alternância ativas/arquivadas (?arquivadas=1), ficha com histórico (data, profissional, serviço, duração, preço registrado, status), cadastro e edição, atalho wa.me. Arquivar (reversível, com confirmação na tela) em vez de apagar.
+- Telefone: guardado como 55+DDD+número (12–13 dígitos); aceita (11) 99999-8888, +55, 011 etc.; celular precisa começar com 9. Telefone repetido AVISA (ao sair do campo e ao salvar) e oferece abrir o cadastro existente ou "cadastrar mesmo assim".
+- Serviços: cada profissional gerencia só os seus (criar, editar, desativar/reativar). Duração padrão (5–720 min) e preço (R$ 0–99.999,99, aceita "50", "50,5", "1.234,56"). Desativado some dos novos agendamentos (Etapa 5) e continua no histórico. A colega pode ver, não editar.
+- Toda Server Action revalida a sessão (getCurrentProfessional), valida com Zod no servidor e usa o cliente Supabase da usuária (RLS como segunda barreira). Mensagens de erro genéricas.
+- Layout: BottomNav e botão flutuante ficam em Suspense (usePathname em rotas dinâmicas [id] exige, com Cache Components).
+- Busca não ignora acentos (ilike); melhoria possível com a extensão unaccent. Tipos das consultas do Supabase são escritos à mão (sem types gerados).
+- Testes: Vitest + Testing Library (npm test): lógica de telefone/dinheiro/schemas, formulários, status e WhatsApp.
+
 ## Etapas
 1. Fundação — CONCLUÍDA
 2. Identidade visual e casca mobile — CONCLUÍDA (aguardando validação)
 3. Banco (Supabase) e login — CONCLUÍDA no servidor (migrações 0001–0003 aplicadas, seed ok, `npm run test:supabase` 42/42 contra o Supabase real); falta só a validação MANUAL do login pelo navegador/celular (lembrar de mim, sair)
-4. Clientes e serviços — pendente
+4. Clientes e serviços — CONCLUÍDA no código e nos testes automáticos; falta a validação visual/manual da usuária
 5. Agenda e agendamentos (com aviso de conflito) — pendente
 6. Status e atalho WhatsApp — pendente
 7. Perfil, PWA, teste em celular real, publicação e backup — pendente
@@ -71,7 +80,7 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Ainda a decidir: calendário diário próprio em lista vertical (sugerido) no lugar de FullCalendar; quando instalar React Hook Form, Zod, Vitest e Playwright (sugerido: quando a etapa precisar).
 - Saudação e data na tela Início ficam para a etapa do dashboard (a data atual exige tratamento específico com Cache Components).
 - O login pela tela (formulário, cookie de lembrar de mim, Sair) ainda não foi exercitado com sucesso no navegador: o agente não digita senhas de contas reais em formulários de serviço remoto; a usuária valida manualmente.
-- Testes: `npm run test:supabase` (contra o Supabase real; cria e apaga dados marcados com __teste__; usa as contas do seed). `npm run test:db` (PGlite, 65 verificações de esquema e RLS, com stubs do ambiente Supabase — não substitui testar no Supabase real). Vitest/Testing Library e Playwright ainda não instalados.
+- Testes: `npm test` (Vitest, componentes e lógica). `npm run test:supabase` (contra o Supabase real, 56 verificações; cria e apaga dados marcados com __teste__; usa as contas do seed). `npm run test:db` (PGlite, 65 verificações de esquema e RLS, com stubs do ambiente Supabase — não substitui testar no Supabase real). Playwright (E2E em viewport móvel) ainda não instalado.
 - Hipótese de trabalho a confirmar: qualquer profissional do salão pode criar e alterar atendimentos de qualquer uma (ex.: marcar concluído pela colega). Serviços, expediente e bloqueios só pela dona.
 - Telefone repetido não é bloqueado no banco (a tela avisará). Sem DELETE em clientes, serviços e atendimentos.
 - Texto da mensagem de WhatsApp: a definir.

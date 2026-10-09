@@ -30,9 +30,8 @@ function isActive(item: NavItem, pathname: string) {
   return item.matches.some((m) => pathname === m || pathname.startsWith(`${m}/`));
 }
 
-export function BottomNav() {
-  const pathname = usePathname();
-
+/** Barra de navegação. Recebe a rota atual para poder ser desenhada também como fallback do Suspense (sem item ativo). */
+export function BottomNavView({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label="Navegação principal"
@@ -68,4 +67,8 @@ export function BottomNav() {
       </ul>
     </nav>
   );
+}
+
+export function BottomNav() {
+  return <BottomNavView pathname={usePathname()} />;
 }

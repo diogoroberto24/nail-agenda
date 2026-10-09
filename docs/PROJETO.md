@@ -63,12 +63,24 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Busca não ignora acentos (ilike); melhoria possível com a extensão unaccent. Tipos das consultas do Supabase são escritos à mão (sem types gerados).
 - Testes: Vitest + Testing Library (npm test): lógica de telefone/dinheiro/schemas, formulários, status e WhatsApp.
 
+## Etapa 5 — agenda e agendamentos
+- Agenda (/agenda): lista vertical do dia ordenada por horário; navegação dia anterior/seguinte, "Hoje" e seletor de data nativo; faixa semanal compacta (dom–sáb, com contagem escrita em cada dia) como visão semanal; filtro Todas / cada profissional (nome escrito, não só cor); cancelados ficam fora da lista; "Horário sobreposto" nos cartões da mesma profissional; destaque e aviso após salvar (?destaque=).
+- Cartão: horário início–fim, cliente, serviço, profissional, status, atalhos (detalhes, editar, WhatsApp simples). Detalhe em /agendamentos/[id].
+- Novo agendamento e edição/remarcação: cliente (busca nome/telefone + cadastro rápido com aviso de telefone repetido), serviço da própria profissional (preenche duração e preço; ambos ajustáveis só no atendimento), data, horário, observações, resumo ao vivo com término calculado, aviso de sobreposição em tempo real. Salvar com conflito exige "Agendar mesmo assim" (aviso, não bloqueio). Um atendimento só pode ser criado/editado pela dona; só aguardando confirmação/confirmado são editáveis.
+- Idempotência: o formulário gera o id do atendimento; reenvio (toque repetido, rede ruim) não duplica.
+- Fuso: instantes em UTC no banco; data/hora locais via src/lib/timezone.ts (America/Sao_Paulo; testado inclusive com horário de verão histórico). O fuso está fixo em código (SALON_TIMEZONE), não lido de salons.timezone.
+- Regras em src/lib/appointments/service.ts (sem dependência do Next) para testar contra o banco real.
+- Cancelado e "não compareceu" liberam o horário; concluído ainda ocupa.
+- Testes: npm test (94), npm run test:integration (23, Supabase real, datas em 2031, limpa o que cria), test:supabase (56), test:db (78).
+- Decidido: remarcar (mudar data ou horário de início) um atendimento CONFIRMADO o devolve para "aguardando confirmação"; a agenda avisa. Mudar só observação, preço ou duração não altera o status.
+- Decidido: a tela de Disponibilidade (expediente, pausas, folgas, bloqueios) e os horários livres ficam para o FIM do projeto (antes da publicação).
+
 ## Etapas
 1. Fundação — CONCLUÍDA
 2. Identidade visual e casca mobile — CONCLUÍDA (aguardando validação)
 3. Banco (Supabase) e login — CONCLUÍDA no servidor (migrações 0001–0003 aplicadas, seed ok, `npm run test:supabase` 42/42 contra o Supabase real); falta só a validação MANUAL do login pelo navegador/celular (lembrar de mim, sair)
 4. Clientes e serviços — CONCLUÍDA no código e nos testes automáticos; falta a validação visual/manual da usuária
-5. Agenda e agendamentos (com aviso de conflito) — pendente
+5. Agenda e agendamentos (com aviso de conflito) — CONCLUÍDA no código e nos testes automáticos; falta validação visual/manual da usuária. NÃO inclui horários livres (dependem da tela de Disponibilidade, ainda não construída) nem ações de status (Etapa 6)
 6. Status e atalho WhatsApp — pendente
 7. Perfil, PWA, teste em celular real, publicação e backup — pendente
 
@@ -80,10 +92,27 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Ainda a decidir: calendário diário próprio em lista vertical (sugerido) no lugar de FullCalendar; quando instalar React Hook Form, Zod, Vitest e Playwright (sugerido: quando a etapa precisar).
 - Saudação e data na tela Início ficam para a etapa do dashboard (a data atual exige tratamento específico com Cache Components).
 - O login pela tela (formulário, cookie de lembrar de mim, Sair) ainda não foi exercitado com sucesso no navegador: o agente não digita senhas de contas reais em formulários de serviço remoto; a usuária valida manualmente.
-- Testes: `npm test` (Vitest, componentes e lógica). `npm run test:supabase` (contra o Supabase real, 56 verificações; cria e apaga dados marcados com __teste__; usa as contas do seed). `npm run test:db` (PGlite, 65 verificações de esquema e RLS, com stubs do ambiente Supabase — não substitui testar no Supabase real). Playwright (E2E em viewport móvel) ainda não instalado.
+- Testes: `npm test` (Vitest, componentes e lógica). `npm run test:integration` (Vitest contra o Supabase real). `npm run test:supabase` (contra o Supabase real, 56 verificações; cria e apaga dados marcados com __teste__; usa as contas do seed). `npm run test:db` (PGlite, 65 verificações de esquema e RLS, com stubs do ambiente Supabase — não substitui testar no Supabase real). Playwright (E2E em viewport móvel) ainda não instalado.
 - Hipótese de trabalho a confirmar: qualquer profissional do salão pode criar e alterar atendimentos de qualquer uma (ex.: marcar concluído pela colega). Serviços, expediente e bloqueios só pela dona.
 - Telefone repetido não é bloqueado no banco (a tela avisará). Sem DELETE em clientes, serviços e atendimentos.
-- Texto da mensagem de WhatsApp: a definir.
+- Texto da mensagem de WhatsApp (definido pela usuária em 2026-10-09; usar exatamente este modelo na Etapa 6; [dia/mês] = dd/MM, [horário] = HH:mm no fuso do salão):
+
+```text
+Olá [nome da cliente], tudo bem? 🤍
+
+Passando para confirmar seu agendamento!
+
+📅 Data: [dia/mês]
+⏰ Horário: [horário]
+💅 Procedimento: [nome do serviço]
+Manicure: [nome da profissional]
+
+Está tudo certinho para você?
+
+Caso precise cancelar ou remarcar, pedimos que nos avise com antecedência.
+
+Aguardamos você! Será um prazer te atender.
+```
 - Limites do plano gratuito do Supabase (pausa por inatividade, backups): não verificados; conferir na Etapa 3/7.
 
 ## Próximo passo

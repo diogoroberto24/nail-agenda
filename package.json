@@ -11,7 +11,8 @@
     "test:db": "node tests/db/rls.test.mjs",
     "test:supabase": "node --env-file=.env.local tests/integration/supabase-rls.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:integration": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.integration.config.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

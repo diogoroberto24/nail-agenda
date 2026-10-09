@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { logout } from "@/app/login/actions";
 
 export const metadata: Metadata = { title: "Menu" };
 
@@ -35,16 +36,15 @@ export default function MenuPage() {
           </li>
         ))}
         <li>
-          {/* o login ainda não existe; ativado na etapa de autenticação */}
-          <button
-            type="button"
-            disabled
-            className="flex min-h-14 w-full items-center gap-3 px-4 text-left text-taupe-soft opacity-70"
-          >
-            <LogOut className="size-5" strokeWidth={1.7} aria-hidden />
-            <span className="flex-1 font-medium">Sair</span>
-            <span className="text-xs">disponível após o login</span>
-          </button>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="flex min-h-14 w-full items-center gap-3 px-4 text-left text-cocoa active:bg-muted"
+            >
+              <LogOut className="size-5 text-rose-deep" strokeWidth={1.7} aria-hidden />
+              <span className="flex-1 font-medium">Sair</span>
+            </button>
+          </form>
         </li>
       </ul>
     </>

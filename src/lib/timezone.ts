@@ -122,3 +122,9 @@ export function formatDateBR(dateStr: string): string {
   const [y, m, d] = dateStr.split("-");
   return `${d}/${m}/${y}`;
 }
+
+/** "2026-11-10" → "Terça-feira, 10 de novembro" (só a primeira letra maiúscula). */
+export function formatLongDateCapitalized(dateStr: string): string {
+  const text = formatLongDate(dateStr);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}

@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentProfessional } from "@/lib/auth/session";
 import { intervalsOverlap, occupiesSlot } from "@/lib/appointments/conflicts";
-import { parseDateParam } from "@/lib/agenda-url";
+import { agendaHref, parseDateParam } from "@/lib/agenda-url";
 import { listAppointmentsInRange, listProfessionals, type AppointmentItem } from "@/lib/data/appointments";
 import { addDays, startOfWeek, toZonedParts, todayInZone, zonedDateTimeToUtc } from "@/lib/timezone";
 
@@ -40,6 +40,7 @@ async function AgendaContent({ searchParams }: { searchParams: PageProps<"/agend
   const highlightId = typeof params.destaque === "string" ? params.destaque : undefined;
   const justSaved = highlightId !== undefined;
   const rescheduled = params.remarcado === "1";
+  const cancelled = params.cancelado === "1";
 
   const professionals = await listProfessionals();
   const proParam = typeof params.pro === "string" ? params.pro : "todas";
@@ -65,6 +66,12 @@ async function AgendaContent({ searchParams }: { searchParams: PageProps<"/agend
 
   return (
     <div className="space-y-4 px-5">
+      {cancelled && (
+        <p role="status" className="flex items-center gap-2 rounded-xl bg-[#e4ede5] px-4 py-3 text-sm font-medium text-[#2f5a3a]">
+          <CircleCheck className="size-4" aria-hidden />
+          Atendimento cancelado. O horário foi liberado.
+        </p>
+      )}
       {justSaved && (
         <p role="status" className="flex items-center gap-2 rounded-xl bg-[#e4ede5] px-4 py-3 text-sm font-medium text-[#2f5a3a]">
           <CircleCheck className="size-4" aria-hidden />
@@ -77,7 +84,7 @@ async function AgendaContent({ searchParams }: { searchParams: PageProps<"/agend
       <DateNav date={date} today={today} pro={selectedPro} />
       <WeekStrip date={date} today={today} pro={selectedPro} counts={counts} />
       <ProfessionalFilter
-        date={date}
+        hrefFor={(pro) => agendaHref({ date, pro })}
         selected={selectedPro}
         professionals={professionals.map((p) => ({ id: p.id, name: p.display_name, isMe: p.id === me.professionalId }))}
       />
@@ -109,7 +116,8 @@ async function AgendaContent({ searchParams }: { searchParams: PageProps<"/agend
             <AppointmentCard
               key={item.id}
               item={item}
-              canEdit={item.professional_id === me.professionalId && (item.status === "awaiting_confirmation" || item.status === "confirmed")}
+              mine={item.professional_id === me.professionalId}
+              afterCancelHref={agendaHref({ date, pro: selectedPro, cancelled: true })}
               overlaps={overlapping.has(item.id)}
               highlighted={item.id === highlightId}
             />

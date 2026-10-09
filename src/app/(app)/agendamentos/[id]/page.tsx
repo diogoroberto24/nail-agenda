@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Pencil } from "lucide-react";
+import { StatusActions } from "@/components/appointments/status-actions";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { WhatsAppLink } from "@/components/whatsapp-link";
@@ -13,7 +14,9 @@ import { formatDuration } from "@/lib/datetime";
 import { formatBRL } from "@/lib/money";
 import { formatBrazilPhone } from "@/lib/phone";
 import { agendaHref } from "@/lib/agenda-url";
-import { formatLongDate, formatTime, toZonedParts } from "@/lib/timezone";
+import { isOpenStatus } from "@/lib/appointments/transitions";
+import { formatLongDateCapitalized, formatTime, toZonedParts } from "@/lib/timezone";
+import { buildConfirmationMessage } from "@/lib/whatsapp-message";
 
 export const metadata: Metadata = { title: "Atendimento" };
 
@@ -35,8 +38,18 @@ async function Appointment({ params }: { params: PageProps<"/agendamentos/[id]">
 
   const date = toZonedParts(item.start_at).date;
   const mine = item.professional_id === me.professionalId;
-  const editable = mine && (item.status === "awaiting_confirmation" || item.status === "confirmed");
+  const open = isOpenStatus(item.status);
+  const editable = mine && open;
   const clientName = item.clients?.full_name ?? "Cliente";
+  // a mensagem de confirmação só faz sentido enquanto o atendimento ainda vai acontecer
+  const message = !open
+    ? undefined
+    : buildConfirmationMessage({
+        clientName,
+        startAt: item.start_at,
+        serviceName: item.services?.name ?? "Serviço",
+        professionalName: item.professionals?.display_name ?? "",
+      });
 
   return (
     <>
@@ -46,7 +59,7 @@ async function Appointment({ params }: { params: PageProps<"/agendamentos/[id]">
           <StatusBadge status={item.status} />
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[0.95rem]">
             <dt className="text-taupe-soft">Data</dt>
-            <dd className="text-right font-medium capitalize text-cocoa">{formatLongDate(date)}</dd>
+            <dd className="text-right font-medium text-cocoa">{formatLongDateCapitalized(date)}</dd>
             <dt className="text-taupe-soft">Horário</dt>
             <dd className="text-right font-medium tabular-nums text-cocoa">
               {formatTime(item.start_at)} – {formatTime(item.end_at)} ({formatDuration(item.duration_minutes_at_booking)})
@@ -78,7 +91,30 @@ async function Appointment({ params }: { params: PageProps<"/agendamentos/[id]">
         </section>
 
         <div className="flex flex-col gap-3">
-          {item.clients && <WhatsAppLink phone={item.clients.phone} name={clientName} variant="button" className="w-full" />}
+          {item.clients && (
+            <WhatsAppLink
+              phone={item.clients.phone}
+              name={clientName}
+              message={message}
+              label={message ? "Enviar confirmação no WhatsApp" : "Abrir WhatsApp"}
+              variant="button"
+              className="w-full"
+            />
+          )}
+          {message && (
+            <p className="-mt-1 text-sm text-taupe-soft">
+              Abrir o WhatsApp não muda o status. Depois que a cliente responder, toque em Confirmar atendimento.
+            </p>
+          )}
+          {mine && (
+            <StatusActions
+              appointmentId={item.id}
+              status={item.status}
+              clientName={clientName}
+              variant="detail"
+              afterCancelHref={agendaHref({ date, cancelled: true })}
+            />
+          )}
           {editable && (
             <Link href={`/agendamentos/${item.id}/editar`} className={buttonVariants({ variant: "outline", size: "lg", className: "w-full" })}>
               <Pencil aria-hidden />

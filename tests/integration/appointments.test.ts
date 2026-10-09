@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-import { checkConflicts, createAppointment, updateAppointment, type Actor } from "@/lib/appointments/service";
+import { checkConflicts, createAppointment, setAppointmentStatus, updateAppointment, type Actor } from "@/lib/appointments/service";
 import { toZonedParts, zonedDateTimeToUtc, zonedDayRange } from "@/lib/timezone";
 
 /**
@@ -358,5 +358,128 @@ describe("operações simultâneas dos dois celulares", () => {
     expect(x.result.ok).toBe(true);
     expect(y.result.ok).toBe(true);
     expect(await countById(id)).toBe(1);
+  });
+});
+
+describe("status do atendimento", () => {
+  const statusOf = async (id: string) => (await admin.from("appointments").select("status, cancellation_reason").eq("id", id).single()).data!;
+
+  it("fluxo: aguardando → confirmado → concluído, tudo manual", async () => {
+    const id = await setup(A, { date: "2031-07-01", time: "08:00" });
+    expect((await statusOf(id)).status).toBe("awaiting_confirmation");
+    expect(await setAppointmentStatus(A.db, A.actor, id, "confirmed", "awaiting_confirmation")).toEqual({ ok: true, status: "confirmed" });
+    expect(await setAppointmentStatus(A.db, A.actor, id, "completed", "confirmed")).toEqual({ ok: true, status: "completed" });
+    expect((await statusOf(id)).status).toBe("completed");
+  });
+
+  it("o horário passar não muda o status sozinho (atendimento no passado continua aguardando)", async () => {
+    const id = await setup(A, { date: "2020-01-15", time: "10:00" });
+    expect((await statusOf(id)).status).toBe("awaiting_confirmation");
+  });
+
+  it("concluído só pode ser reaberto (confirmado); outras mudanças e status inválidos são recusados", async () => {
+    const id = await setup(A, { date: "2031-07-02", time: "08:00" });
+    await setAppointmentStatus(A.db, A.actor, id, "completed");
+    for (const next of ["cancelled", "no_show", "awaiting_confirmation", "completed"] as const) {
+      const r = await setAppointmentStatus(A.db, A.actor, id, next);
+      expect(r).toMatchObject({ ok: false, error: "Esta mudança de status não é permitida." });
+    }
+    expect((await statusOf(id)).status).toBe("completed");
+
+    const other = await setup(A, { date: "2031-07-03", time: "08:00" });
+    expect(await setAppointmentStatus(A.db, A.actor, other, "awaiting_confirmation")).toMatchObject({ ok: false });
+    expect(await setAppointmentStatus(A.db, A.actor, other, "qualquer" as never)).toMatchObject({ ok: false });
+  });
+
+  it("reabrir um concluído por engano: volta para confirmado, fica editável e pode ser concluído de novo", async () => {
+    const id = await setup(A, { date: "2031-07-10", time: "08:00" });
+    await setAppointmentStatus(A.db, A.actor, id, "completed", "awaiting_confirmation");
+    // concluído não é editável
+    expect(await updateAppointment(A.db, A.actor, id, values({ date: "2031-07-10", time: "09:00" }), true)).toMatchObject({ ok: false });
+
+    expect(await setAppointmentStatus(A.db, A.actor, id, "confirmed", "completed")).toEqual({ ok: true, status: "confirmed" });
+    expect((await statusOf(id)).status).toBe("confirmed");
+    // reaberto volta a ser editável
+    expect(await updateAppointment(A.db, A.actor, id, values({ date: "2031-07-10", time: "08:00", notes: "reaberto" }), true)).toMatchObject({ ok: true });
+    expect(await setAppointmentStatus(A.db, A.actor, id, "completed", "confirmed")).toEqual({ ok: true, status: "completed" });
+  });
+
+  it("reabrir um não compareceu por engano também volta para confirmado; cancelado não reabre", async () => {
+    const noShow = await setup(A, { date: "2031-07-11", time: "08:00" });
+    await setAppointmentStatus(A.db, A.actor, noShow, "no_show");
+    expect(await setAppointmentStatus(A.db, A.actor, noShow, "confirmed")).toEqual({ ok: true, status: "confirmed" });
+
+    const cancelled = await setup(A, { date: "2031-07-12", time: "08:00" });
+    await setAppointmentStatus(A.db, A.actor, cancelled, "cancelled");
+    expect(await setAppointmentStatus(A.db, A.actor, cancelled, "confirmed")).toMatchObject({ ok: false, error: "Esta mudança de status não é permitida." });
+    expect((await statusOf(cancelled)).status).toBe("cancelled");
+  });
+
+  it("a colega não reabre atendimento alheio", async () => {
+    const id = await setup(A, { date: "2031-07-13", time: "08:00" });
+    await setAppointmentStatus(A.db, A.actor, id, "completed");
+    expect(await setAppointmentStatus(B.db, B.actor, id, "confirmed")).toMatchObject({ ok: false, error: "Atendimento não encontrado." });
+    expect((await statusOf(id)).status).toBe("completed");
+  });
+
+  it("cancelar não exige motivo, libera o horário e tira o atendimento da agenda", async () => {
+    const id = await setup(A, { date: "2031-07-04", time: "09:00" });
+    expect(await setAppointmentStatus(A.db, A.actor, id, "cancelled")).toEqual({ ok: true, status: "cancelled" });
+    expect((await statusOf(id)).cancellation_reason).toBeNull();
+
+    expect(await checkConflicts(A.db, A.actor, { date: "2031-07-04", time: "09:00", durationMinutes: "40" })).toHaveLength(0);
+    const again = await create(A, { date: "2031-07-04", time: "09:00" });
+    expect(again.result.ok).toBe(true);
+
+    const { start, end } = zonedDayRange("2031-07-04");
+    const { data } = await A.db.from("appointments").select("id").gte("start_at", start.toISOString()).lt("start_at", end.toISOString()).neq("status", "cancelled");
+    expect((data ?? []).map((r) => r.id)).not.toContain(id);
+    // o histórico guarda: continua no banco
+    expect(await countById(id)).toBe(1);
+  });
+
+  it("'não compareceu' também libera o horário", async () => {
+    const id = await setup(A, { date: "2031-07-05", time: "09:00" });
+    await setAppointmentStatus(A.db, A.actor, id, "no_show");
+    expect(await checkConflicts(A.db, A.actor, { date: "2031-07-05", time: "09:00", durationMinutes: "40" })).toHaveLength(0);
+  });
+
+  it("a colega não muda o status de atendimento alheio", async () => {
+    const id = await setup(A, { date: "2031-07-06", time: "09:00" });
+    const r = await setAppointmentStatus(B.db, B.actor, id, "confirmed");
+    expect(r).toMatchObject({ ok: false, error: "Atendimento não encontrado." });
+    expect((await statusOf(id)).status).toBe("awaiting_confirmation");
+  });
+
+  it("dois celulares: se o status já mudou, a segunda alteração não é aplicada às cegas", async () => {
+    const id = await setup(A, { date: "2031-07-07", time: "09:00" });
+    await setAppointmentStatus(A.db, A.actor, id, "confirmed", "awaiting_confirmation");
+    // o outro aparelho ainda acha que está "aguardando" e tenta cancelar
+    const stale = await setAppointmentStatus(A.db, A.actor, id, "cancelled", "awaiting_confirmation");
+    expect(stale).toMatchObject({ ok: false });
+    if (!stale.ok) expect(stale.error).toContain("outro aparelho");
+    expect((await statusOf(id)).status).toBe("confirmed");
+  });
+
+  it("cliques simultâneos: só uma mudança vence e o resultado fica coerente", async () => {
+    const id = await setup(A, { date: "2031-07-08", time: "09:00" });
+    const [x, y] = await Promise.all([
+      setAppointmentStatus(A.db, A.actor, id, "completed", "awaiting_confirmation"),
+      setAppointmentStatus(A.db, A.actor, id, "cancelled", "awaiting_confirmation"),
+    ]);
+    expect([x.ok, y.ok].filter(Boolean)).toHaveLength(1);
+    const finalStatus = (await statusOf(id)).status;
+    expect(["completed", "cancelled"]).toContain(finalStatus);
+    expect(finalStatus).toBe(x.ok ? "completed" : "cancelled");
+  });
+
+  it("depois de confirmado, remarcar volta para aguardando; depois de concluído, não edita mais", async () => {
+    const id = await setup(A, { date: "2031-07-09", time: "09:00" });
+    await setAppointmentStatus(A.db, A.actor, id, "confirmed");
+    const moved = await updateAppointment(A.db, A.actor, id, values({ date: "2031-07-09", time: "10:00" }), true);
+    expect(moved).toMatchObject({ ok: true, statusReset: true });
+    expect((await statusOf(id)).status).toBe("awaiting_confirmation");
+    await setAppointmentStatus(A.db, A.actor, id, "completed");
+    expect(await updateAppointment(A.db, A.actor, id, values({ date: "2031-07-09", time: "11:00" }), true)).toMatchObject({ ok: false });
   });
 });

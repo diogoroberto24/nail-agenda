@@ -8,13 +8,15 @@ type WhatsAppLinkProps = {
   name: string;
   /** mensagem pré-preenchida (opcional) */
   message?: string;
+  /** texto do botão na variante "button" */
+  label?: string;
   /** "icon": botão redondo; "button": botão largo com texto */
   variant?: "icon" | "button";
   className?: string;
 };
 
 /** Abre uma conversa no WhatsApp (app ou web). Não altera nenhum status. Se o telefone for inválido, não mostra o link. */
-export function WhatsAppLink({ phone, name, message, variant = "icon", className }: WhatsAppLinkProps) {
+export function WhatsAppLink({ phone, name, message, label = "Abrir WhatsApp", variant = "icon", className }: WhatsAppLinkProps) {
   const href = buildWhatsAppUrl(phone, message);
   if (!href) {
     return (
@@ -40,7 +42,7 @@ export function WhatsAppLink({ phone, name, message, variant = "icon", className
         )}
       >
         <MessageCircle className="size-5" aria-hidden />
-        Abrir WhatsApp
+        {label}
       </a>
     );
   }
@@ -50,7 +52,7 @@ export function WhatsAppLink({ phone, name, message, variant = "icon", className
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Abrir WhatsApp de ${name}`}
+      aria-label={message ? `Enviar confirmação pelo WhatsApp para ${name}` : `Abrir WhatsApp de ${name}`}
       className={cn(
         "flex size-12 shrink-0 items-center justify-center rounded-full text-[#2f5a3a] active:bg-[#e4ede5]",
         className,

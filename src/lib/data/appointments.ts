@@ -79,3 +79,36 @@ export async function listProfessionals(): Promise<ProfessionalItem[]> {
   if (error) throw new Error("Não foi possível carregar as profissionais.");
   return data ?? [];
 }
+
+/**
+ * Próximos atendimentos (aguardando confirmação ou confirmados) que ainda não terminaram,
+ * do mais cedo ao mais tarde. Passa de hoje para os dias seguintes se hoje já acabou.
+ */
+export async function listUpcomingAppointments(now: Date, professionalId?: string, limit = 6): Promise<AppointmentItem[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("appointments")
+    .select(APPOINTMENT_SELECT)
+    .in("status", ["awaiting_confirmation", "confirmed"])
+    .gte("end_at", now.toISOString())
+    .order("start_at", { ascending: true })
+    .limit(limit);
+  if (professionalId) query = query.eq("professional_id", professionalId);
+  const { data, error } = await query;
+  if (error) throw new Error("Não foi possível carregar os próximos atendimentos.");
+  return (data ?? []) as unknown as AppointmentItem[];
+}
+
+/** Quantos atendimentos aguardam confirmação, de `from` em diante. */
+export async function countPendingConfirmations(from: Date, professionalId?: string): Promise<number> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "awaiting_confirmation")
+    .gte("start_at", from.toISOString());
+  if (professionalId) query = query.eq("professional_id", professionalId);
+  const { count, error } = await query;
+  if (error) throw new Error("Não foi possível contar as confirmações pendentes.");
+  return count ?? 0;
+}

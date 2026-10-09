@@ -11,13 +11,16 @@ type WeekStripProps = {
   counts: Record<string, number>;
 };
 
-/** Semana compacta (domingo a sábado): 7 alvos de toque, cada um com a contagem escrita. Complementa a lista do dia. */
+/** Semana compacta (domingo a sábado): 7 alvos de toque de pelo menos 44 px, cada um com a contagem escrita. Em telas muito estreitas rola um pouco na horizontal. Complementa a lista do dia. */
 export function WeekStrip({ date, today, pro, counts }: WeekStripProps) {
   const first = startOfWeek(date);
   const days = Array.from({ length: 7 }, (_, i) => addDays(first, i));
 
   return (
-    <nav aria-label="Semana" className="grid grid-cols-7 gap-1">
+    <nav
+      aria-label="Semana"
+      className="-mx-2 grid grid-cols-[repeat(7,minmax(2.75rem,1fr))] gap-0.5 overflow-x-auto px-2 pb-1"
+    >
       {days.map((day) => {
         const selected = day === date;
         const count = counts[day] ?? 0;

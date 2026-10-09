@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { agendaHref } from "@/lib/agenda-url";
-import { addDays, formatLongDate, isValidDateString } from "@/lib/timezone";
+import { addDays, formatLongDateCapitalized, isValidDateString } from "@/lib/timezone";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -29,8 +29,8 @@ export function DateNav({ date, today, pro }: DateNavProps) {
         >
           <ChevronLeft aria-hidden />
         </Link>
-        <h2 className="min-w-0 flex-1 text-center text-xl font-semibold capitalize leading-tight text-cocoa">
-          {formatLongDate(date)}
+        <h2 className="min-w-0 flex-1 text-center text-xl font-semibold leading-tight text-cocoa">
+          {formatLongDateCapitalized(date)}
         </h2>
         <Link
           href={agendaHref({ date: addDays(date, 1), pro })}

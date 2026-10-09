@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   formatLongDate,
+  formatLongDateCapitalized,
   formatShortWeekday,
   formatTime,
   isValidDateString,
@@ -74,6 +75,7 @@ describe("datas no fuso do salão", () => {
 
   it("formata para a tela em português", () => {
     expect(formatLongDate("2026-11-10")).toBe("terça-feira, 10 de novembro");
+    expect(formatLongDateCapitalized("2026-11-10")).toBe("Terça-feira, 10 de novembro"); // só a 1ª letra
     expect(formatShortWeekday("2026-11-10")).toBe("ter");
     expect(formatTime("2026-11-10T13:00:00Z", SP)).toBe("10:00");
   });

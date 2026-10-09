@@ -6,6 +6,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appointmentSchema, toAppointmentRow, toAppointmentTimes } from "@/lib/appointments/schema";
 import { findOverlaps } from "@/lib/appointments/conflicts";
+import { isAppointmentStatus, type AppointmentStatus } from "@/lib/appointments/status";
+import { canTransition } from "@/lib/appointments/transitions";
 import { findOverlappingAppointments, type OverlapRow } from "@/lib/appointments/queries";
 import { formatTime, toZonedParts } from "@/lib/timezone";
 
@@ -171,4 +173,50 @@ export async function updateAppointment(
   if (!data?.length) return { ok: false, code: "error", error: "Atendimento não encontrado." };
 
   return { ok: true, id, date: toZonedParts(row.start_at).date, ...(statusReset ? { statusReset: true } : {}) };
+}
+
+export type SetStatusResult =
+  | { ok: true; status: AppointmentStatus }
+  | { ok: false; error: string };
+
+/**
+ * Muda o status de um atendimento da própria profissional (confirmar, concluir, não compareceu, cancelar).
+ * Só aceita transições permitidas e só se o status ainda for o que a tela mostrava: se outro aparelho
+ * já alterou, a mudança não é aplicada às cegas. Cancelar libera o horário (não exige motivo).
+ */
+export async function setAppointmentStatus(
+  supabase: SupabaseClient,
+  actor: Actor,
+  id: string,
+  next: AppointmentStatus,
+  expectedCurrent?: AppointmentStatus,
+): Promise<SetStatusResult> {
+  if (!UUID.test(id) || !isAppointmentStatus(next)) return { ok: false, error: "Atendimento não encontrado." };
+
+  const { data: current } = await supabase
+    .from("appointments")
+    .select("id, status")
+    .eq("id", id)
+    .eq("professional_id", actor.professionalId)
+    .maybeSingle();
+  if (!current) return { ok: false, error: "Atendimento não encontrado." };
+
+  const from = current.status as AppointmentStatus;
+  if (expectedCurrent && from !== expectedCurrent) {
+    return { ok: false, error: "Este atendimento já foi alterado em outro aparelho. A tela foi atualizada." };
+  }
+  if (!canTransition(from, next)) return { ok: false, error: "Esta mudança de status não é permitida." };
+
+  // o filtro por status atual impede que duas mudanças simultâneas se sobreponham
+  const { data, error } = await supabase
+    .from("appointments")
+    .update({ status: next })
+    .eq("id", id)
+    .eq("professional_id", actor.professionalId)
+    .eq("status", from)
+    .select("id");
+  if (error) return { ok: false, error: GENERIC_ERROR };
+  if (!data?.length) return { ok: false, error: "Este atendimento já foi alterado em outro aparelho. A tela foi atualizada." };
+
+  return { ok: true, status: next };
 }

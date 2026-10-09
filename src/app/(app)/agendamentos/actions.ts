@@ -5,15 +5,18 @@ import { getCurrentProfessional } from "@/lib/auth/session";
 import {
   checkConflicts,
   createAppointment,
+  setAppointmentStatus,
   updateAppointment,
   type ConflictInfo,
   type SaveAppointmentResult,
+  type SetStatusResult,
 } from "@/lib/appointments/service";
+import type { AppointmentStatus } from "@/lib/appointments/status";
 import { searchActiveClients } from "@/lib/data/appointments";
 import { formatBrazilPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 
-export type { ConflictInfo, SaveAppointmentResult };
+export type { ConflictInfo, SaveAppointmentResult, SetStatusResult };
 export type PickerClient = { id: string; fullName: string; phone: string };
 
 const SESSION_EXPIRED = "Sua sessão expirou. Entre novamente.";
@@ -68,5 +71,23 @@ export async function updateAppointmentAction(
     revalidatePath(`/agendamentos/${id}`);
     revalidatePath("/clientes");
   }
+  return result;
+}
+
+/** Confirmar, concluir, não compareceu ou cancelar. Cancelar libera o horário. */
+export async function setAppointmentStatusAction(
+  id: string,
+  next: AppointmentStatus,
+  expectedCurrent?: AppointmentStatus,
+): Promise<SetStatusResult> {
+  const me = await getCurrentProfessional();
+  if (!me) return { ok: false, error: SESSION_EXPIRED };
+
+  const result = await setAppointmentStatus(await createClient(), me, id, next, expectedCurrent);
+  // mesmo quando falha por mudança em outro aparelho, a tela precisa recarregar o estado real
+  revalidatePath("/agenda");
+  revalidatePath("/");
+  revalidatePath(`/agendamentos/${id}`);
+  revalidatePath("/clientes");
   return result;
 }

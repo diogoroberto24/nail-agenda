@@ -71,9 +71,20 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Fuso: instantes em UTC no banco; data/hora locais via src/lib/timezone.ts (America/Sao_Paulo; testado inclusive com horário de verão histórico). O fuso está fixo em código (SALON_TIMEZONE), não lido de salons.timezone.
 - Regras em src/lib/appointments/service.ts (sem dependência do Next) para testar contra o banco real.
 - Cancelado e "não compareceu" liberam o horário; concluído ainda ocupa.
-- Testes: npm test (94), npm run test:integration (23, Supabase real, datas em 2031, limpa o que cria), test:supabase (56), test:db (78).
+- Testes: npm test (120), npm run test:integration (32, Supabase real, datas em 2031, limpa o que cria), test:supabase (56), test:db (78).
 - Decidido: remarcar (mudar data ou horário de início) um atendimento CONFIRMADO o devolve para "aguardando confirmação"; a agenda avisa. Mudar só observação, preço ou duração não altera o status.
 - Decidido: a tela de Disponibilidade (expediente, pausas, folgas, bloqueios) e os horários livres ficam para o FIM do projeto (antes da publicação).
+
+## Etapa 6 — status, WhatsApp e Início
+- Status (src/lib/appointments/transitions.ts): aguardando → confirmar, concluir, não compareceu ou cancelar; confirmado → concluir, não compareceu ou cancelar; concluído e não compareceu podem ser REABERTOS (voltam para confirmado, para corrigir toque errado); cancelado é definitivo. Tudo manual; o horário passar não muda nada e abrir o WhatsApp não muda o status. Só a dona altera.
+- Cartão da agenda: ação principal (Confirmar / Concluir) + menu "Mais"; cancelar pede confirmação na própria tela, libera o horário, tira o atendimento da agenda (continua no banco/histórico) e volta à agenda com aviso. Detalhe do atendimento mostra todas as ações.
+- Dois celulares: a mudança de status só é aplicada se o status ainda for o que a tela mostrava (senão avisa e recarrega); cliques simultâneos: só um vence.
+- WhatsApp: mensagem de confirmação no modelo definido (primeiro nome da cliente; dd/MM; HH:mm; serviço; "Manicure: profissional"), codificada no wa.me; botão no cartão (ícone) e no detalhe ("Enviar confirmação no WhatsApp"). Para concluídos/cancelados/não compareceu o link abre a conversa sem mensagem.
+- Início (/): saudação por hora do salão e data, filtro por profissional, tiles "atendimentos hoje" e "confirmações pendentes" (todas as pendentes de hoje em diante), contagem por status do dia, próximos atendimentos (cartões com data) e atalho para a agenda de hoje. Tudo calculado dos dados reais.
+- Correções visuais da conferência: título da data com maiúscula só na primeira letra; células do cartão sem traço curvo; faixa semanal com alvos de 44 px (rola um pouco na horizontal em 320 px).
+- Conferência visual feita com os componentes reais renderizados com dados de exemplo (arquivo temporário, removido) em 390 e 320 px: sem rolagem horizontal da página; alvos de toque de 44 px.
+- Testes: npm test (125), test:integration (35, Supabase real), test:supabase (56), test:db (78).
+- Reabrir (pedido pela usuária em 2026-10-09): botão "Reabrir atendimento" em concluído e não compareceu; volta para CONFIRMADO e volta a ser editável. Cancelado não reabre. Observação: um não compareceu libera o horário; se outro atendimento for marcado nele, reabrir pode gerar sobreposição, que aparece como "Horário sobreposto" (aviso, não bloqueio).
 
 ## Etapas
 1. Fundação — CONCLUÍDA
@@ -81,7 +92,7 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 3. Banco (Supabase) e login — CONCLUÍDA no servidor (migrações 0001–0003 aplicadas, seed ok, `npm run test:supabase` 42/42 contra o Supabase real); falta só a validação MANUAL do login pelo navegador/celular (lembrar de mim, sair)
 4. Clientes e serviços — CONCLUÍDA no código e nos testes automáticos; falta a validação visual/manual da usuária
 5. Agenda e agendamentos (com aviso de conflito) — CONCLUÍDA no código e nos testes automáticos; falta validação visual/manual da usuária. NÃO inclui horários livres (dependem da tela de Disponibilidade, ainda não construída) nem ações de status (Etapa 6)
-6. Status e atalho WhatsApp — pendente
+6. Status, WhatsApp e tela Início — CONCLUÍDA no código e nos testes automáticos; falta a validação manual da usuária (a tela Início e as páginas dinâmicas não foram vistas no navegador)
 7. Perfil, PWA, teste em celular real, publicação e backup — pendente
 
 ## Pendências e observações

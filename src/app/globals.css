@@ -1,0 +1,118 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Design tokens — Nail Agenda
+ * Paleta base (definida no briefing):
+ *   off-white #FAF8F5 · nude #E9DDD2 · rosa queimado #C58F96
+ *   marrom profundo #51413E · cinza quente #8B817C · branco #FFFFFF
+ * Tons derivados (apenas para texto, por contraste AA sobre off-white/branco):
+ *   rosa profundo #9C616B (4.6:1) · cinza suave #6F6560 (5.3:1)
+ */
+
+@theme inline {
+  /* marca */
+  --color-offwhite: #faf8f5;
+  --color-nude: #e9ddd2;
+  --color-rose: #c58f96;
+  --color-rose-deep: #9c616b;
+  --color-cocoa: #51413e;
+  --color-taupe: #8b817c;
+  --color-taupe-soft: #6f6560;
+
+  /* semântica (shadcn/ui) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* tipografia */
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-display);
+
+  /* bordas */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+
+  /* medidas de layout mobile */
+  --spacing-nav: 4.25rem;
+  --shadow-soft: 0 1px 2px rgb(81 65 62 / 0.05), 0 4px 16px rgb(81 65 62 / 0.06);
+  --shadow-fab: 0 6px 20px rgb(156 97 107 / 0.35);
+}
+
+:root {
+  --background: #faf8f5;
+  --foreground: #51413e;
+  --card: #ffffff;
+  --card-foreground: #51413e;
+  --popover: #ffffff;
+  --popover-foreground: #51413e;
+  --primary: #51413e;
+  --primary-foreground: #faf8f5;
+  --secondary: #e9ddd2;
+  --secondary-foreground: #51413e;
+  --muted: #f3ede6;
+  --muted-foreground: #6f6560;
+  --accent: #e9ddd2;
+  --accent-foreground: #51413e;
+  --destructive: #a2453f;
+  --border: #e9ddd2;
+  --input: #dccfc3;
+  --ring: #9c616b;
+  --radius: 1rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.01em;
+  }
+  /* inputs a 16px evitam o zoom automático do iOS ao focar */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@layer utilities {
+  /* respeita a área segura (notch / barra de gestos) */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}

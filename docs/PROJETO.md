@@ -13,11 +13,11 @@ agendamento público na v1.
 - Agenda compartilhada mostra todos os dados (nome e telefone da cliente) das duas profissionais.
 - Profissionais diferentes podem atender no mesmo horário (sem bloqueio nem aviso entre elas).
 - A mesma profissional não pode ter dois atendimentos sobrepostos: o sistema AVISA (mostrando a outra cliente e o horário), sem bloquear.
-- Não existe horário de expediente padrão: data e hora livres em cada agendamento.
+- Não existe horário de expediente padrão. Disponibilidade (dias, horários, pausas, folgas, férias, bloqueios) é OPCIONAL por profissional: se cadastrada, a agenda mostra horários livres e avisa fora dela; se não, qualquer horário é aceito.
 - Clientes: cadastro compartilhado.
 - Serviços: individuais por profissional (nome, preço, duração padrão).
 - Duração e preço são copiados para o agendamento e editáveis só nele; o serviço não muda.
-- Status: agendado, confirmado, cancelado, concluído. Cancelado fica no banco e é ocultado da agenda.
+- Status: aguardando confirmação, confirmado, concluído, cancelado e não compareceu. Cancelado fica no banco e é ocultado da agenda. Cancelamento libera o horário. Coluna `cancellation_reason` existe, é opcional e a tela não pede o motivo.
 - Confirmação manual: botão que abre WhatsApp (`wa.me`) com mensagem pré-preenchida. Texto definitivo ainda a definir; usar texto provisório em um único lugar do código.
 - Idioma pt-BR, moeda R$, fuso America/Sao_Paulo (horários em UTC no banco).
 - Identidade visual: sofisticada, feminina, minimalista — off-white, nude, rosa queimado, marrom profundo.
@@ -58,7 +58,8 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - `npm audit` reporta 5 vulnerabilidades "high" em `braces`/`micromatch`/`fast-glob`, todas dentro da cadeia de `eslint-config-next` (ferramenta de lint, só desenvolvimento). A correção sugerida (`--force`) faria downgrade para eslint-config-next 14, por isso NÃO foi aplicada. Reavaliar quando houver versão corrigida.
 - Após a Etapa 2 o `npm audit` mostra 9 "high" (eram 5). Mesma causa raiz: `braces`/`micromatch`/`fast-glob` (ReDoS), agora também dentro do pacote `shadcn` (CLI, listado em `dependencies` porque `globals.css` importa `shadcn/tailwind.css`) e `ts-morph`. Esse código é de ferramentas de build/CLI e não roda no servidor nem no navegador. Não corrigido; reavaliar a cada atualização.
 - `npx tsc --noEmit` só funciona depois de um `next build`/`next dev` (os tipos de rota são gerados por eles).
-- CONFLITOS entre o prompt principal (recebido na Etapa 2) e decisões anteriores — aguardando resolução do usuário antes da Etapa 3 (ver relatório da Etapa 2): aviso x bloqueio de sobreposição, motivo de cancelamento, status "Não compareceu", disponibilidade/expediente, serviços globais x por profissional, escopo de salões múltiplos, ferramentas de teste.
+- Conflitos do prompt principal RESOLVIDOS em 2026-10-09: (1) sobreposição da mesma profissional só AVISA, não bloqueia (vale também no banco: sem exclusion constraint); (2) `cancellation_reason` opcional e sem pedir na tela; (3) quinto status "não compareceu"; (4) disponibilidade opcional, como acima; (5) serviços individuais por profissional (serviço pertence a uma profissional; a tabela `professional_services` do prompt não é necessária); (6) manter `salons` e `salon_members`, mesmo com um salão só.
+- Ainda a decidir: calendário diário próprio em lista vertical (sugerido) no lugar de FullCalendar; quando instalar React Hook Form, Zod, Vitest e Playwright (sugerido: quando a etapa precisar).
 - Saudação e data na tela Início ficam para a etapa do dashboard (a data atual exige tratamento específico com Cache Components).
 - "Sair" no menu está desabilitado até existir login.
 - Testes automatizados (Vitest/Playwright) ainda não instalados.

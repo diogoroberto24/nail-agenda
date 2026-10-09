@@ -20,6 +20,13 @@ if (missing.length) {
   process.exit(1);
 }
 
+for (const k of ["SEED_PRO1_PASSWORD", "SEED_PRO2_PASSWORD"]) {
+  if (env[k].length < 8) {
+    console.error(`${k} precisa ter pelo menos 8 caracteres.`);
+    process.exit(1);
+  }
+}
+
 const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });

@@ -50,13 +50,14 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Autorização real no servidor: `getCurrentProfessional()` (`src/lib/auth/session.ts`) + `AuthGate` no layout; conta sem vínculo com salão é deslogada em `/auth/acesso-negado`.
 - "Lembrar de mim": cookie `na-remember`; desmarcado, os cookies de sessão do Supabase viram cookies de sessão do navegador (sem maxAge).
 - Migrações em `supabase/migrations/` (9 tabelas, FKs compostas para integridade salão/profissional/cliente/serviço, RLS, grants por coluna). Aplicadas manualmente pelo SQL Editor.
+- Migração 0003 concede acesso ao `service_role` (necessária porque "Automatically expose new tables" está desligado).
 - Contas criadas por `npm run seed` (chave secreta, só local). Cadastro público desligado no painel.
 - Formulários: React Hook Form + Zod; validação repetida no servidor.
 
 ## Etapas
 1. Fundação — CONCLUÍDA
 2. Identidade visual e casca mobile — CONCLUÍDA (aguardando validação)
-3. Banco (Supabase) e login — CÓDIGO PRONTO; falta configurar o Supabase real e verificar o login ponta a ponta (ver docs/SUPABASE.md)
+3. Banco (Supabase) e login — CONCLUÍDA no servidor (migrações 0001–0003 aplicadas, seed ok, `npm run test:supabase` 42/42 contra o Supabase real); falta só a validação MANUAL do login pelo navegador/celular (lembrar de mim, sair)
 4. Clientes e serviços — pendente
 5. Agenda e agendamentos (com aviso de conflito) — pendente
 6. Status e atalho WhatsApp — pendente
@@ -69,8 +70,8 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Conflitos do prompt principal RESOLVIDOS em 2026-10-09: (1) sobreposição da mesma profissional só AVISA, não bloqueia (vale também no banco: sem exclusion constraint); (2) `cancellation_reason` opcional e sem pedir na tela; (3) quinto status "não compareceu"; (4) disponibilidade opcional, como acima; (5) serviços individuais por profissional (serviço pertence a uma profissional; a tabela `professional_services` do prompt não é necessária); (6) manter `salons` e `salon_members`, mesmo com um salão só.
 - Ainda a decidir: calendário diário próprio em lista vertical (sugerido) no lugar de FullCalendar; quando instalar React Hook Form, Zod, Vitest e Playwright (sugerido: quando a etapa precisar).
 - Saudação e data na tela Início ficam para a etapa do dashboard (a data atual exige tratamento específico com Cache Components).
-- Login só foi testado até o ponto de falha de rede/validação; o caminho de sucesso (sessão real, lembrar de mim, sair, RLS contra o Supabase real) NÃO foi verificado ainda: depende do .env.local.
-- Testes: `npm run test:db` (PGlite, 65 verificações de esquema e RLS, com stubs do ambiente Supabase — não substitui testar no Supabase real). Vitest/Testing Library e Playwright ainda não instalados.
+- O login pela tela (formulário, cookie de lembrar de mim, Sair) ainda não foi exercitado com sucesso no navegador: o agente não digita senhas de contas reais em formulários de serviço remoto; a usuária valida manualmente.
+- Testes: `npm run test:supabase` (contra o Supabase real; cria e apaga dados marcados com __teste__; usa as contas do seed). `npm run test:db` (PGlite, 65 verificações de esquema e RLS, com stubs do ambiente Supabase — não substitui testar no Supabase real). Vitest/Testing Library e Playwright ainda não instalados.
 - Hipótese de trabalho a confirmar: qualquer profissional do salão pode criar e alterar atendimentos de qualquer uma (ex.: marcar concluído pela colega). Serviços, expediente e bloqueios só pela dona.
 - Telefone repetido não é bloqueado no banco (a tela avisará). Sem DELETE em clientes, serviços e atendimentos.
 - Texto da mensagem de WhatsApp: a definir.

@@ -20,17 +20,19 @@ function record(name, ok, detail = "") {
 await db.exec(`
   create role anon nologin;
   create role authenticated nologin;
+  create role service_role nologin bypassrls;
   create schema auth;
   create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb);
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  grant usage on schema public, auth to anon, authenticated;
+  grant usage on schema public, auth to anon, authenticated, service_role;
   grant execute on function auth.uid() to anon, authenticated;
 `);
 
 await db.exec(readFileSync(MIG + "20261009000001_schema.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261009000002_rls_policies.sql", "utf8"));
-record("migrações 0001 e 0002 executam sem erro", true);
+await db.exec(readFileSync(MIG + "20261009000003_service_role_grants.sql", "utf8"));
+record("migrações 0001, 0002 e 0003 executam sem erro", true);
 
 // ---- dados base (superusuária = papel de administração)
 const U = {
@@ -97,6 +99,13 @@ const C1 = "30000000-0000-0000-0000-000000000001";
 const CS2 = "30000000-0000-0000-0000-000000000002";
 const SA = "40000000-0000-0000-0000-00000000000a";
 const SB = "40000000-0000-0000-0000-00000000000b";
+
+// ---- service_role (script de seed) tem acesso; anon continua sem nenhum
+const TABLES = ["profiles","salons","salon_members","professionals","clients","services","appointments","business_hours","blocked_times"];
+for (const tb of TABLES) {
+  const r = await rows("select has_table_privilege('service_role', $1, 'select,insert,update') a, has_table_privilege('anon', $1, 'select') b", ["public." + tb]);
+  record("service_role acessa " + tb + " e anon não", r[0].a === true && r[0].b === false, JSON.stringify(r[0]));
+}
 
 // ---- isolamento
 await expectError("anon não lê clients", () => as(null, () => rows("select * from public.clients")), /permission denied/i);

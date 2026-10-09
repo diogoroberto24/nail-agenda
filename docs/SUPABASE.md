@@ -46,8 +46,9 @@ Abra o `.env.local` no editor e preencha as 3 chaves do passo 3. O arquivo já �
 1. Abra `supabase/migrations/20261009000001_schema.sql`, copie **todo** o conteúdo, cole no editor e clique em **Run**.
    Deve terminar com "Success. No rows returned".
 2. Nova query: repita com `supabase/migrations/20261009000002_rls_policies.sql`.
+3. Nova query: repita com `supabase/migrations/20261009000003_service_role_grants.sql` (dá ao script de seed permissão nas tabelas; necessário porque "Automatically expose new tables" está desligado).
 
-Rode **uma vez, nesta ordem**. Se rodar de novo, dará erro de "já existe" (isso é esperado e não danifica nada).
+Rode **uma vez cada, nesta ordem**. Se rodar de novo, dará erro de "já existe" (isso é esperado e não danifica nada).
 
 Se algum passo der erro, copie a mensagem **sem incluir chaves** e me envie.
 

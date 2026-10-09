@@ -42,3 +42,6 @@ next-env.d.ts
 
 # o exemplo (sem segredos) deve ser versionado
 !.env.local.example
+
+# arquivos do editor (JetBrains)
+.idea/

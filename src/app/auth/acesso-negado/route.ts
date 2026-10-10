@@ -4,6 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 /** Conta autenticada, mas sem vínculo com um salão: encerra a sessão e volta ao login. */
 export async function GET(request: Request) {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
   return NextResponse.redirect(new URL("/login?erro=sem-acesso", request.url));
 }

@@ -47,8 +47,9 @@ export async function login(values: LoginValues): Promise<LoginResult> {
   return { ok: true };
 }
 
+/** Sai só deste aparelho; as sessões em outros aparelhos continuam ("lembrar de mim neste aparelho"). */
 export async function logout() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
 }

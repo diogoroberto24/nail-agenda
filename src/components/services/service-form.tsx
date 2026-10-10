@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createServiceAction, updateServiceAction, type SaveServiceResult } from "@/app/(app)/servicos/actions";
 import { serviceSchema, type ServiceFormValues } from "@/lib/services/schema";
 import { cn } from "@/lib/utils";
+import { useFormIds } from "@/lib/use-form-ids";
 
 const PRESETS = [30, 45, 60, 90, 120];
 
@@ -29,6 +30,7 @@ export function ServiceForm({
   cancelHref,
   actions = { create: createServiceAction, update: updateServiceAction },
 }: ServiceFormProps) {
+  const id = useFormIds();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function ServiceForm({
     register,
     handleSubmit,
     setValue,
+    reset,
     control,
     formState: { errors },
   } = useForm<ServiceFormValues>({
@@ -61,6 +64,8 @@ export function ServiceForm({
         setServerError(result.error);
         return;
       }
+      // o Next mantém a tela montada (escondida): sem isso, "Novo serviço" reabriria preenchido com o anterior
+      if (!serviceId) reset();
       router.push("/servicos?salvo=1");
     });
   }
@@ -73,38 +78,38 @@ export function ServiceForm({
         </p>
       )}
 
-      <Field id="name" label="Nome do serviço" error={errors.name?.message}>
+      <Field id={id("name")} label="Nome do serviço" error={errors.name?.message}>
         <Input
-          id="name"
+          id={id("name")}
           autoComplete="off"
           aria-invalid={errors.name ? true : undefined}
-          aria-describedby={errors.name ? "name-msg" : undefined}
+          aria-describedby={errors.name ? `${id("name")}-msg` : undefined}
           {...register("name")}
         />
       </Field>
 
-      <Field id="description" label="Descrição" optional error={errors.description?.message}>
+      <Field id={id("description")} label="Descrição" optional error={errors.description?.message}>
         <Textarea
-          id="description"
+          id={id("description")}
           rows={2}
           aria-invalid={errors.description ? true : undefined}
-          aria-describedby={errors.description ? "description-msg" : undefined}
+          aria-describedby={errors.description ? `${id("description")}-msg` : undefined}
           {...register("description")}
         />
       </Field>
 
       <Field
-        id="durationMinutes"
+        id={id("durationMinutes")}
         label="Duração padrão (minutos)"
         error={errors.durationMinutes?.message}
         hint="Cada agendamento pode ajustar a duração sem mudar este padrão."
       >
         <Input
-          id="durationMinutes"
+          id={id("durationMinutes")}
           inputMode="numeric"
           autoComplete="off"
           aria-invalid={errors.durationMinutes ? true : undefined}
-          aria-describedby="durationMinutes-msg"
+          aria-describedby={`${id("durationMinutes")}-msg`}
           {...register("durationMinutes")}
         />
         <div className="flex flex-wrap gap-2 pt-1" role="group" aria-label="Durações comuns">
@@ -125,17 +130,17 @@ export function ServiceForm({
       </Field>
 
       <Field
-        id="price"
+        id={id("price")}
         label="Preço padrão (R$)"
         error={errors.price?.message}
         hint="Ex.: 50 ou 50,00. O preço de atendimentos já marcados não muda."
       >
         <Input
-          id="price"
+          id={id("price")}
           inputMode="decimal"
           autoComplete="off"
           aria-invalid={errors.price ? true : undefined}
-          aria-describedby="price-msg"
+          aria-describedby={`${id("price")}-msg`}
           {...register("price")}
         />
       </Field>

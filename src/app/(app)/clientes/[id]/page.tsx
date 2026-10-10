@@ -54,8 +54,8 @@ async function Client({
           <p className="text-lg font-medium text-cocoa">{formatBrazilPhone(client.phone)}</p>
           {client.notes && <p className="whitespace-pre-line text-[0.95rem] text-taupe-soft">{client.notes}</p>}
           <div className="flex flex-col gap-3 pt-1 sm:flex-row">
-            <WhatsAppLink phone={client.phone} name={client.full_name} variant="button" className="flex-1" />
-            <Link href={`/clientes/${client.id}/editar`} className={buttonVariants({ variant: "outline", className: "flex-1" })}>
+            <WhatsAppLink phone={client.phone} name={client.full_name} variant="button" className="sm:flex-1" />
+            <Link href={`/clientes/${client.id}/editar`} className={buttonVariants({ variant: "outline", className: "sm:flex-1" })}>
               <Pencil aria-hidden />
               Editar
             </Link>

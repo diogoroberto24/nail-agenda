@@ -63,6 +63,15 @@ describe("ClientForm", () => {
     );
   });
 
+  it("depois de cadastrar, o formulário zera (o Next mantém a tela montada); na edição não zera", async () => {
+    const { user } = setup();
+    await fill(user, "Maria Silva", "11999998888");
+    await user.click(screen.getByRole("button", { name: "Cadastrar cliente" }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByLabelText(/Nome completo/)).toHaveValue(""));
+    expect(screen.getByLabelText(/Telefone com DDD/)).toHaveValue("");
+  });
+
   it("ao sair do telefone: formata o número e avisa se já existe cadastro", async () => {
     const { actions, user } = setup({
       checkPhone: vi.fn().mockResolvedValue([{ id: "c-9", fullName: "Joana Souza", archived: false }]),

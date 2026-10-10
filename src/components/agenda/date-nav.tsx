@@ -7,6 +7,7 @@ import { agendaHref } from "@/lib/agenda-url";
 import { addDays, formatLongDateCapitalized, isValidDateString } from "@/lib/timezone";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useFormIds } from "@/lib/use-form-ids";
 
 type DateNavProps = {
   date: string;
@@ -16,6 +17,7 @@ type DateNavProps = {
 
 /** Data selecionada, dia anterior/seguinte, "Hoje" e seletor de data nativo (bom no celular). */
 export function DateNav({ date, today, pro }: DateNavProps) {
+  const id = useFormIds();
   const router = useRouter();
   const isToday = date === today;
 
@@ -49,11 +51,11 @@ export function DateNav({ date, today, pro }: DateNavProps) {
         >
           Hoje
         </Link>
-        <label className="sr-only" htmlFor="agenda-date">
+        <label className="sr-only" htmlFor={id("agenda-date")}>
           Ir para uma data
         </label>
         <input
-          id="agenda-date"
+          id={id("agenda-date")}
           type="date"
           value={date}
           onChange={(e) => {

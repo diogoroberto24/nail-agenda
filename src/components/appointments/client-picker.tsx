@@ -9,6 +9,7 @@ import { searchClientsAction, type PickerClient } from "@/app/(app)/agendamentos
 import { createClientAction, type DuplicateClient, type SaveClientResult } from "@/app/(app)/clientes/actions";
 import { clientSchema } from "@/lib/clients/schema";
 import { formatBrazilPhone, normalizeBrazilPhone } from "@/lib/phone";
+import { useFormIds } from "@/lib/use-form-ids";
 
 export type SelectedClient = { id: string; name: string; phone: string };
 
@@ -148,6 +149,7 @@ function QuickClientForm({
   onCreated: (client: SelectedClient) => void;
   onUseExisting: (existing: DuplicateClient) => void;
 }) {
+  const id = useFormIds();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
@@ -206,13 +208,13 @@ function QuickClientForm({
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="quick-name">Nome completo</Label>
-        <Input id="quick-name" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={errors.name ? true : undefined} />
+        <Label htmlFor={id("quick-name")}>Nome completo</Label>
+        <Input id={id("quick-name")} autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={errors.name ? true : undefined} />
         {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="quick-phone">Telefone com DDD</Label>
-        <Input id="quick-phone" type="tel" inputMode="tel" autoComplete="off" value={phone} onChange={(e) => setPhone(e.target.value)} aria-invalid={errors.phone ? true : undefined} />
+        <Label htmlFor={id("quick-phone")}>Telefone com DDD</Label>
+        <Input id={id("quick-phone")} type="tel" inputMode="tel" autoComplete="off" value={phone} onChange={(e) => setPhone(e.target.value)} aria-invalid={errors.phone ? true : undefined} />
         {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
       </div>
 

@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginValues } from "@/lib/auth/schemas";
 import { login } from "./actions";
+import { useFormIds } from "@/lib/use-form-ids";
 
 export function LoginForm({ notice }: { notice?: string }) {
+  const id = useFormIds();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -50,35 +52,35 @@ export function LoginForm({ notice }: { notice?: string }) {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email">E-mail</Label>
+        <Label htmlFor={id("email")}>E-mail</Label>
         <Input
-          id="email"
+          id={id("email")}
           type="email"
           inputMode="email"
           autoComplete="username"
           autoCapitalize="none"
           autoCorrect="off"
           aria-invalid={errors.email ? true : undefined}
-          aria-describedby={errors.email ? "email-erro" : undefined}
+          aria-describedby={errors.email ? `${id("email")}-erro` : undefined}
           {...register("email")}
         />
         {errors.email && (
-          <p id="email-erro" className="text-sm text-destructive">
+          <p id={id("email-erro")} className="text-sm text-destructive">
             {errors.email.message}
           </p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Senha</Label>
+        <Label htmlFor={id("password")}>Senha</Label>
         <div className="relative">
           <Input
-            id="password"
+            id={id("password")}
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             className="pr-12"
             aria-invalid={errors.password ? true : undefined}
-            aria-describedby={errors.password ? "senha-erro" : undefined}
+            aria-describedby={errors.password ? `${id("senha")}-erro` : undefined}
             {...register("password")}
           />
           <button
@@ -91,7 +93,7 @@ export function LoginForm({ notice }: { notice?: string }) {
           </button>
         </div>
         {errors.password && (
-          <p id="senha-erro" className="text-sm text-destructive">
+          <p id={id("senha-erro")} className="text-sm text-destructive">
             {errors.password.message}
           </p>
         )}
@@ -103,11 +105,11 @@ export function LoginForm({ notice }: { notice?: string }) {
         render={({ field }) => (
           <div className="flex min-h-11 items-center gap-3">
             <Checkbox
-              id="remember"
+              id={id("remember")}
               checked={field.value}
               onCheckedChange={(checked) => field.onChange(checked === true)}
             />
-            <Label htmlFor="remember" className="text-[0.95rem] font-normal">
+            <Label htmlFor={id("remember")} className="text-[0.95rem] font-normal">
               Lembrar de mim neste aparelho
             </Label>
           </div>

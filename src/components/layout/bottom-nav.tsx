@@ -21,7 +21,7 @@ const ITEMS: NavItem[] = [
     href: "/menu",
     label: "Menu",
     icon: Menu,
-    matches: ["/menu", "/servicos", "/disponibilidade", "/configuracoes", "/perfil"],
+    matches: ["/menu", "/servicos", "/configuracoes", "/perfil"],
   },
 ];
 

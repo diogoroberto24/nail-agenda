@@ -73,7 +73,7 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Cancelado e "não compareceu" liberam o horário; concluído ainda ocupa.
 - Testes: npm test (120), npm run test:integration (32, Supabase real, datas em 2031, limpa o que cria), test:supabase (56), test:db (78).
 - Decidido: remarcar (mudar data ou horário de início) um atendimento CONFIRMADO o devolve para "aguardando confirmação"; a agenda avisa. Mudar só observação, preço ou duração não altera o status.
-- Decidido: a tela de Disponibilidade (expediente, pausas, folgas, bloqueios) e os horários livres ficam para o FIM do projeto (antes da publicação).
+- Decidido (2026-10-10): a tela de Disponibilidade (expediente, pausas, folgas, bloqueios) e os horários livres NÃO serão feitos por enquanto. A tela e o item do menu foram removidos; as tabelas `business_hours` e `blocked_times` e suas regras de segurança continuam no banco para uso futuro.
 
 ## Etapa 6 — status, WhatsApp e Início
 - Status (src/lib/appointments/transitions.ts): aguardando → confirmar, concluir, não compareceu ou cancelar; confirmado → concluir, não compareceu ou cancelar; concluído e não compareceu podem ser REABERTOS (voltam para confirmado, para corrigir toque errado); cancelado é definitivo. Tudo manual; o horário passar não muda nada e abrir o WhatsApp não muda o status. Só a dona altera.
@@ -86,6 +86,15 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Testes: npm test (125), test:integration (35, Supabase real), test:supabase (56), test:db (78).
 - Reabrir (pedido pela usuária em 2026-10-09): botão "Reabrir atendimento" em concluído e não compareceu; volta para CONFIRMADO e volta a ser editável. Cancelado não reabre. Observação: um não compareceu libera o horário; se outro atendimento for marcado nele, reabrir pode gerar sobreposição, que aparece como "Horário sobreposto" (aviso, não bloqueio).
 
+## Etapa 7 — perfil, PWA, E2E, backup e publicação
+- Perfil (/perfil): nome de exibição, trocar senha (exige a senha atual) e pedir troca de e-mail (exige a senha atual; o Supabase envia link de confirmação). Lógica em src/lib/profile/service.ts, testada contra o Supabase real com conta descartável. NÃO verificado: o envio real do e-mail de confirmação (o teste não dispara e-mail de verdade).
+- Sair agora encerra só ESTE aparelho (signOut scope local), coerente com "lembrar de mim neste aparelho".
+- PWA: manifest.webmanifest (standalone, cores da marca, ícones 192/512 e maskable), ícone do iPhone, favicon; ícones gerados por scripts/generate-icons.mjs. Sem service worker (sem modo offline, como decidido). O proxy deixa manifesto e ícones públicos. Configurações traz o passo a passo de instalação. NÃO verificado: instalação em aparelho real.
+- E2E (Playwright, npm run test:e2e): usa o Microsoft Edge instalado (nenhum navegador baixado); compila o app e usa o Supabase real; a sessão é criada pela API com a conta do seed (não se digita senha em formulário, então a TELA de login só é testada até a validação e o botão Entrar não é submetido); dados marcados com __e2e__ e apagados no fim. Projetos: visitante (rotas protegidas, login, manifesto), fluxo-390 (20 testes de uso completo) e layout em 320, 360, 390, 430, tablet e desktop (14 telas cada: sem rolagem horizontal, alvos de toque de 44 px, barra e botão flutuante sem cobrir conteúdo, sem erros no console).
+- Backup/restauração (scripts/backup.mjs e restore.mjs): exporta as 9 tabelas e as contas (sem senhas), confere contagens; restaura só o que falta (nunca altera nem apaga); testado contra o banco real. A pasta backups/ é ignorada pelo git.
+- Bugs achados pelos testes E2E e corrigidos: (1) o Next 16 mantém telas visitadas montadas e escondidas: ids fixos de campos duplicavam (rótulo apontava para o campo escondido) → useFormIds; (2) por isso cadastros novos reabriam preenchidos e o novo agendamento reaproveitava o identificador de tentativa (seria engolido como reenvio) → formulário zera e gera tentativa nova após salvar; (3) botões da ficha da cliente com 23 px de altura no celular (flex-1 em coluna); (4) link do cliente no detalhe com alvo pequeno; (5) busca trocava _ e % por espaço → agora escapa; (6) avisos de Date.now() na pré-renderização → await connection() em createClient.
+- Documentação: README.md (instalação, comandos, backup, segurança), docs/SUPABASE.md, docs/DEPLOY.md.
+
 ## Etapas
 1. Fundação — CONCLUÍDA
 2. Identidade visual e casca mobile — CONCLUÍDA (aguardando validação)
@@ -93,7 +102,7 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 4. Clientes e serviços — CONCLUÍDA no código e nos testes automáticos; falta a validação visual/manual da usuária
 5. Agenda e agendamentos (com aviso de conflito) — CONCLUÍDA no código e nos testes automáticos; falta validação visual/manual da usuária. NÃO inclui horários livres (dependem da tela de Disponibilidade, ainda não construída) nem ações de status (Etapa 6)
 6. Status, WhatsApp e tela Início — CONCLUÍDA no código e nos testes automáticos; falta a validação manual da usuária (a tela Início e as páginas dinâmicas não foram vistas no navegador)
-7. Perfil, PWA, teste em celular real, publicação e backup — pendente
+7. Perfil, PWA, E2E, backup e publicação — CÓDIGO, TESTES E DOCUMENTAÇÃO PRONTOS; falta a publicação na Vercel (aguarda autorização) e a validação manual (troca real de e-mail, instalação no celular)
 
 ## Pendências e observações
 - `npm audit` reporta 5 vulnerabilidades "high" em `braces`/`micromatch`/`fast-glob`, todas dentro da cadeia de `eslint-config-next` (ferramenta de lint, só desenvolvimento). A correção sugerida (`--force`) faria downgrade para eslint-config-next 14, por isso NÃO foi aplicada. Reavaliar quando houver versão corrigida.

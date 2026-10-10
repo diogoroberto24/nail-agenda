@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { digitsOnly } from "@/lib/phone";
+import { buildClientSearchFilter } from "@/lib/clients/search";
 import type { AppointmentStatus } from "@/lib/appointments/status";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,11 +16,6 @@ export type ClientRow = {
 
 const CLIENT_COLUMNS = "id, full_name, phone, notes, archived_at";
 
-/** Remove caracteres que têm significado especial no filtro `or` do PostgREST e no LIKE. */
-function sanitizeSearch(q: string): string {
-  return q.replace(/[,()*%_\\"]/g, " ").replace(/\s+/g, " ").trim();
-}
-
 /**
  * Lista clientes do salão (a RLS já restringe ao salão da usuária).
  * Busca por nome ou telefone. `archived: true` mostra só as arquivadas.
@@ -30,13 +25,8 @@ export async function listClients({ q, archived }: { q?: string; archived?: bool
   let query = supabase.from("clients").select(CLIENT_COLUMNS).limit(500);
   query = archived ? query.not("archived_at", "is", null) : query.is("archived_at", null);
 
-  const term = sanitizeSearch(q ?? "");
-  if (term) {
-    const digits = digitsOnly(term);
-    const filters = [`full_name.ilike.*${term}*`];
-    if (digits.length >= 3) filters.push(`phone.ilike.*${digits}*`);
-    query = query.or(filters.join(","));
-  }
+  const filter = buildClientSearchFilter(q ?? "");
+  if (filter) query = query.or(filter);
 
   const { data, error } = await query;
   if (error) throw new Error("Não foi possível carregar os clientes.");

@@ -65,6 +65,17 @@ describe("ServiceForm", () => {
     );
   });
 
+  it("depois de cadastrar, o formulário zera (o Next mantém a tela montada)", async () => {
+    const { user } = setup();
+    await user.type(screen.getByLabelText("Nome do serviço"), "Esmaltação");
+    await user.type(screen.getByLabelText(/Duração padrão/), "40");
+    await user.type(screen.getByLabelText(/Preço padrão/), "50");
+    await user.click(screen.getByRole("button", { name: "Cadastrar serviço" }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByLabelText("Nome do serviço")).toHaveValue(""));
+    expect(screen.getByLabelText(/Preço padrão/)).toHaveValue("");
+  });
+
   it("falha de conexão: mantém os campos", async () => {
     const { user } = setup({ create: vi.fn().mockRejectedValue(new Error("offline")) } as Partial<Actions>);
     await user.type(screen.getByLabelText("Nome do serviço"), "Esmaltação");

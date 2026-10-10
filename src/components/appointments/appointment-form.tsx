@@ -24,6 +24,7 @@ import { formatBRL, formatPriceInput, parsePrice } from "@/lib/money";
 import { formatDateBR, toZonedParts } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 import { newUuid } from "@/lib/uuid";
+import { useFormIds } from "@/lib/use-form-ids";
 
 export type ServiceOption = {
   id: string;
@@ -67,19 +68,22 @@ export function AppointmentForm({
   actions = DEFAULT_ACTIONS,
   pickerActions,
 }: AppointmentFormProps) {
+  const id = useFormIds();
   const router = useRouter();
   const isEdit = Boolean(appointmentId);
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
   const [client, setClient] = useState<SelectedClient | null>(initialClient);
-  // identificador da tentativa: um segundo envio igual não cria atendimento duplicado
-  const [attemptId] = useState(() => newUuid());
+  // identificador da tentativa: um reenvio da MESMA tentativa não cria atendimento duplicado.
+  // Muda depois de salvar: o próximo agendamento é uma tentativa nova.
+  const [attemptId, setAttemptId] = useState(() => newUuid());
 
   const {
     register,
     handleSubmit,
     setValue,
+    reset,
     control,
     formState: { errors },
   } = useForm<AppointmentFormValues>({
@@ -156,6 +160,14 @@ export function AppointmentForm({
         return;
       }
       if (result.ok) {
+        // o Next mantém a tela montada (escondida): sem isso, "Novo agendamento" reabriria preenchido e
+        // reaproveitaria o identificador, e o novo agendamento seria tratado como reenvio do anterior
+        if (!appointmentId) {
+          reset();
+          setClient(initialClient);
+          setConflicts([]);
+          setAttemptId(newUuid());
+        }
         router.push(`/agenda?data=${result.date}&destaque=${result.id}${result.statusReset ? "&remarcado=1" : ""}`);
         return;
       }
@@ -231,45 +243,45 @@ export function AppointmentForm({
       </fieldset>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field id="date" label="Data" error={errors.date?.message}>
-          <Input id="date" type="date" aria-invalid={errors.date ? true : undefined} aria-describedby={errors.date ? "date-msg" : undefined} {...register("date")} />
+        <Field id={id("date")} label="Data" error={errors.date?.message}>
+          <Input id={id("date")} type="date" aria-invalid={errors.date ? true : undefined} aria-describedby={errors.date ? `${id("date")}-msg` : undefined} {...register("date")} />
         </Field>
-        <Field id="time" label="Horário" error={errors.time?.message}>
-          <Input id="time" type="time" step={300} aria-invalid={errors.time ? true : undefined} aria-describedby={errors.time ? "time-msg" : undefined} {...register("time")} />
+        <Field id={id("time")} label="Horário" error={errors.time?.message}>
+          <Input id={id("time")} type="time" step={300} aria-invalid={errors.time ? true : undefined} aria-describedby={errors.time ? `${id("time")}-msg` : undefined} {...register("time")} />
         </Field>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Field
-          id="durationMinutes"
+          id={id("durationMinutes")}
           label="Duração (min)"
           error={errors.durationMinutes?.message}
           hint={service ? `Padrão: ${service.durationMinutes} min` : undefined}
         >
           <Input
-            id="durationMinutes"
+            id={id("durationMinutes")}
             inputMode="numeric"
             autoComplete="off"
             aria-invalid={errors.durationMinutes ? true : undefined}
-            aria-describedby="durationMinutes-msg"
+            aria-describedby={`${id("durationMinutes")}-msg`}
             {...register("durationMinutes")}
           />
         </Field>
-        <Field id="price" label="Preço (R$)" error={errors.price?.message} hint={service ? `Padrão: ${formatBRL(service.price)}` : undefined}>
+        <Field id={id("price")} label="Preço (R$)" error={errors.price?.message} hint={service ? `Padrão: ${formatBRL(service.price)}` : undefined}>
           <Input
-            id="price"
+            id={id("price")}
             inputMode="decimal"
             autoComplete="off"
             aria-invalid={errors.price ? true : undefined}
-            aria-describedby="price-msg"
+            aria-describedby={`${id("price")}-msg`}
             {...register("price")}
           />
         </Field>
       </div>
       <p className="-mt-3 text-sm text-taupe-soft">Ajustes de duração e preço valem só para este atendimento.</p>
 
-      <Field id="notes" label="Observações" optional error={errors.notes?.message}>
-        <Textarea id="notes" rows={2} aria-invalid={errors.notes ? true : undefined} aria-describedby={errors.notes ? "notes-msg" : undefined} {...register("notes")} />
+      <Field id={id("notes")} label="Observações" optional error={errors.notes?.message}>
+        <Textarea id={id("notes")} rows={2} aria-invalid={errors.notes ? true : undefined} aria-describedby={errors.notes ? `${id("notes")}-msg` : undefined} {...register("notes")} />
       </Field>
 
       {hasConflict && (

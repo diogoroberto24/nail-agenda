@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   },
   description: "Agenda privada do salão de unhas.",
   robots: { index: false, follow: false },
+  // iPhone: ao adicionar à tela inicial, abre como app (sem barra do Safari)
+  appleWebApp: { capable: true, title: "Nail Agenda", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

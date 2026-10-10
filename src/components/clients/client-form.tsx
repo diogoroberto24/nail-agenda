@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -19,6 +19,7 @@ import {
 } from "@/app/(app)/clientes/actions";
 import { clientSchema, type ClientFormValues } from "@/lib/clients/schema";
 import { formatBrazilPhone, normalizeBrazilPhone } from "@/lib/phone";
+import { useFormIds } from "@/lib/use-form-ids";
 
 type ClientFormProps = {
   /** quando informado, o formulário edita essa cliente; senão cria uma nova */
@@ -40,11 +41,12 @@ export function ClientForm({
   cancelHref,
   actions = { create: createClientAction, update: updateClientAction, checkPhone: checkClientPhoneAction },
 }: ClientFormProps) {
+  const id = useFormIds();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const [duplicates, setDuplicates] = useState<DuplicateClient[]>([]);
-  const lastChecked = useRef<string>("");
+  const [lastChecked, setLastChecked] = useState("");
   const isEdit = Boolean(clientId);
 
   const {
@@ -52,6 +54,7 @@ export function ClientForm({
     handleSubmit,
     getValues,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<ClientFormValues>({
     resolver: zodResolver(clientSchema),
@@ -75,6 +78,12 @@ export function ClientForm({
       }
 
       if (result.ok) {
+        // o Next mantém a tela montada (escondida): sem isso, "Nova cliente" reabriria preenchida com a anterior
+        if (!clientId) {
+          reset();
+          setDuplicates([]);
+          setLastChecked("");
+        }
         router.push(`/clientes/${result.id}?salvo=1`);
         return;
       }
@@ -92,8 +101,8 @@ export function ClientForm({
     const normalized = normalizeBrazilPhone(raw);
     if (!normalized) return;
     setValue("phone", formatBrazilPhone(normalized));
-    if (normalized === lastChecked.current) return;
-    lastChecked.current = normalized;
+    if (normalized === lastChecked) return;
+    setLastChecked(normalized);
     try {
       setDuplicates(await actions.checkPhone(raw, clientId));
     } catch {
@@ -109,25 +118,25 @@ export function ClientForm({
         </p>
       )}
 
-      <Field id="fullName" label="Nome completo" error={errors.fullName?.message}>
+      <Field id={id("fullName")} label="Nome completo" error={errors.fullName?.message}>
         <Input
-          id="fullName"
+          id={id("fullName")}
           autoComplete="off"
           autoCapitalize="words"
           aria-invalid={errors.fullName ? true : undefined}
-          aria-describedby={errors.fullName ? "fullName-msg" : undefined}
+          aria-describedby={errors.fullName ? `${id("fullName")}-msg` : undefined}
           {...register("fullName")}
         />
       </Field>
 
-      <Field id="phone" label="Telefone com DDD" error={errors.phone?.message} hint="Ex.: (11) 99999-8888">
+      <Field id={id("phone")} label="Telefone com DDD" error={errors.phone?.message} hint="Ex.: (11) 99999-8888">
         <Input
-          id="phone"
+          id={id("phone")}
           type="tel"
           inputMode="tel"
           autoComplete="off"
           aria-invalid={errors.phone ? true : undefined}
-          aria-describedby="phone-msg"
+          aria-describedby={`${id("phone")}-msg`}
           {...phoneField}
           onBlur={(e) => {
             phoneField.onBlur(e);
@@ -164,12 +173,12 @@ export function ClientForm({
         </div>
       )}
 
-      <Field id="notes" label="Observações" optional error={errors.notes?.message}>
+      <Field id={id("notes")} label="Observações" optional error={errors.notes?.message}>
         <Textarea
-          id="notes"
+          id={id("notes")}
           rows={3}
           aria-invalid={errors.notes ? true : undefined}
-          aria-describedby={errors.notes ? "notes-msg" : undefined}
+          aria-describedby={errors.notes ? `${id("notes")}-msg` : undefined}
           {...register("notes")}
         />
       </Field>

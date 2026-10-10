@@ -45,3 +45,9 @@ next-env.d.ts
 
 # arquivos do editor (JetBrains)
 .idea/
+
+# testes E2E (sessões geradas localmente e relatórios) e cópias de segurança com dados pessoais
+tests/e2e/.auth/
+test-results/
+playwright-report/
+backups/

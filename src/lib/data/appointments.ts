@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { buildClientSearchFilter } from "@/lib/clients/search";
 import { isUuid } from "@/lib/data/clients";
 import type { AppointmentStatus } from "@/lib/appointments/status";
 
@@ -52,15 +53,10 @@ export async function getAppointment(id: string): Promise<AppointmentItem | null
 /** Busca clientes ativas para o seletor do agendamento. */
 export async function searchActiveClients(q: string, limit = 8) {
   const supabase = await createClient();
-  const term = q.replace(/[,()*%_\\"]/g, " ").replace(/\s+/g, " ").trim();
-  const digits = term.replace(/\D/g, "");
 
   let query = supabase.from("clients").select("id, full_name, phone").is("archived_at", null).limit(limit);
-  if (term) {
-    const filters = [`full_name.ilike.*${term}*`];
-    if (digits.length >= 3) filters.push(`phone.ilike.*${digits}*`);
-    query = query.or(filters.join(","));
-  }
+  const filter = buildClientSearchFilter(q);
+  if (filter) query = query.or(filter);
   const { data, error } = await query.order("full_name", { ascending: true });
   if (error) throw new Error("Não foi possível buscar clientes.");
   return data ?? [];

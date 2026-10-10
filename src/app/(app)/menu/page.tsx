@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ChevronRight,
-  Clock,
   LogOut,
   Settings,
   Sparkles,
@@ -16,7 +15,6 @@ export const metadata: Metadata = { title: "Menu" };
 
 const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/servicos", label: "Serviços", icon: Sparkles },
-  { href: "/disponibilidade", label: "Disponibilidade", icon: Clock },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
   { href: "/perfil", label: "Perfil", icon: UserRound },
 ];

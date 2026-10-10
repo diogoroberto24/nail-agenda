@@ -229,6 +229,44 @@ describe("AppointmentForm", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/agenda?data=2031-03-10&destaque=a-9&remarcado=1"));
   });
 
+  it("depois de salvar, o formulário zera e o próximo agendamento usa uma tentativa NOVA (não é tratado como reenvio)", async () => {
+    const create = vi.fn().mockResolvedValue({ ok: true, id: "a-1", date: "2031-03-10" });
+    const { user } = setup({ create } as Partial<Actions>);
+    await pickClient(user);
+    await user.click(screen.getByRole("radio", { name: /Esmaltação/ }));
+    await user.type(screen.getByLabelText("Horário"), "10:00");
+    await user.click(screen.getByRole("button", { name: "Agendar" }));
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+
+    // o Next mantém a tela montada: ao voltar, ela precisa estar limpa
+    await waitFor(() => expect(screen.getByLabelText("Horário")).toHaveValue(""));
+    expect(screen.getByRole("radio", { name: /Esmaltação/ })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByLabelText(/Duração/)).toHaveValue("");
+    expect(screen.getByRole("region", { name: "Resumo" })).not.toHaveTextContent("Maria Silva");
+    expect(screen.getByLabelText("Data")).toHaveValue("2031-03-10"); // volta ao dia de partida
+
+    await pickClient(user);
+    await user.click(screen.getByRole("radio", { name: /Alongamento/ }));
+    await user.type(screen.getByLabelText("Horário"), "15:00");
+    await user.click(screen.getByRole("button", { name: "Agendar" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    expect(create.mock.calls[1][0]).not.toBe(create.mock.calls[0][0]);
+  });
+
+  it("modo edição: salvar NÃO limpa o formulário", async () => {
+    const { user } = setup(
+      {},
+      {
+        appointmentId: "a-9",
+        initialClient: { id: CLIENT_ID, name: "Maria Silva", phone: "(11) 99999-8888" },
+        defaultValues: { clientId: CLIENT_ID, serviceId: SERVICE_A, date: "2031-03-10", time: "10:00", durationMinutes: "40", price: "50,00", notes: "" },
+      },
+    );
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(screen.getByLabelText("Horário")).toHaveValue("10:00");
+  });
+
   it("trocar a cliente selecionada volta a mostrar a busca", async () => {
     const { user } = setup();
     await pickClient(user);

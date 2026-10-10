@@ -73,7 +73,7 @@ async function Appointment({ params }: { params: PageProps<"/agendamentos/[id]">
             <dt className="text-taupe-soft">Cliente</dt>
             <dd className="text-right font-medium text-cocoa">
               {item.clients ? (
-                <Link href={`/clientes/${item.clients.id}`} className="underline">
+                <Link href={`/clientes/${item.clients.id}`} className="inline-flex min-h-11 items-center underline">
                   {clientName}
                 </Link>
               ) : (

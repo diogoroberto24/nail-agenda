@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { loginErrorMessage } from "@/lib/auth/login-errors";
 import { loginSchema, type LoginValues } from "@/lib/auth/schemas";
 import { REMEMBER_COOKIE, REMEMBER_MAX_AGE } from "@/lib/supabase/cookies";
 import { createClient } from "@/lib/supabase/server";
@@ -30,17 +31,13 @@ export async function login(values: LoginValues): Promise<LoginResult> {
     const supabase = await createClient({ remember });
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      if (error.status === 429) {
-        return { ok: false, error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
-      }
-      if (error.status === 400 || error.status === 401 || error.status === 422) {
-        // mensagem única: não revela se o e-mail existe
-        return { ok: false, error: "E-mail ou senha incorretos." };
-      }
-      // sem status HTTP (rede) ou erro do servidor: não é culpa da senha
-      return { ok: false, error: "Não foi possível entrar agora. Verifique a internet e tente de novo." };
+      const { kind, message } = loginErrorMessage(error);
+      // erros que NÃO são senha errada (chave inválida, rede, limite) vão para o log do servidor, sem dados pessoais
+      if (kind !== "credentials") console.error("[login] falha de autenticação", { kind, status: error.status, code: error.code });
+      return { ok: false, error: message };
     }
-  } catch {
+  } catch (e) {
+    console.error("[login] exceção ao autenticar", e instanceof Error ? e.message : "desconhecida");
     return { ok: false, error: "Sem conexão com o servidor. Verifique a internet e tente de novo." };
   }
 

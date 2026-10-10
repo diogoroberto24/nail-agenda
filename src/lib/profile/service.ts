@@ -3,6 +3,7 @@
  * dependem do Next.js, para poderem ser testadas contra o banco real.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { LOGIN_MESSAGES, classifyAuthError } from "@/lib/auth/login-errors";
 import { displayNameSchema, emailChangeSchema, passwordChangeSchema } from "@/lib/profile/schema";
 
 export type ProfileResult = { ok: true; message?: string } | { ok: false; error: string; field?: "currentPassword" | "newPassword" | "newEmail" };
@@ -14,11 +15,11 @@ const WRONG_PASSWORD: ProfileResult = { ok: false, error: "Senha atual incorreta
 async function verifyCurrentPassword(supabase: SupabaseClient, email: string, password: string): Promise<ProfileResult | null> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (!error) return null;
-  if (error.status === 429) {
-    return { ok: false, error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
-  }
-  if (error.status === 400 || error.status === 401 || error.status === 422) return WRONG_PASSWORD;
-  return { ok: false, error: "Não foi possível verificar agora. Verifique a internet e tente de novo." };
+  const kind = classifyAuthError(error);
+  if (kind === "credentials") return WRONG_PASSWORD;
+  if (kind === "rate-limit") return { ok: false, error: LOGIN_MESSAGES["rate-limit"] };
+  // chave inválida, rede etc.: não é a senha
+  return { ok: false, error: "Não foi possível verificar agora. Tente de novo em instantes." };
 }
 
 /** Atualiza o nome de exibição (usado em mensagens e na agenda) e o nome do perfil. */

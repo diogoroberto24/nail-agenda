@@ -48,7 +48,7 @@ export function ClientSearch({ initialQuery, archived }: { initialQuery: string;
         aria-label="Buscar cliente por nome ou telefone"
         placeholder="Buscar por nome ou telefone"
         autoComplete="off"
-        className="pl-12 pr-12"
+        className="pl-12 pr-12 [&::-webkit-search-cancel-button]:hidden"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

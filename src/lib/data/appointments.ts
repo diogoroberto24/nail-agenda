@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { buildClientSearchFilter } from "@/lib/clients/search";
 import { isUuid } from "@/lib/data/clients";
+import { pickRecentClients, type RecentClient, type RecentClientRow } from "@/lib/appointments/recent-clients";
 import type { AppointmentStatus } from "@/lib/appointments/status";
 
 export type AppointmentItem = {
@@ -107,4 +108,39 @@ export async function countPendingConfirmations(from: Date, professionalId?: str
   const { count, error } = await query;
   if (error) throw new Error("Não foi possível contar as confirmações pendentes.");
   return count ?? 0;
+}
+
+/**
+ * Últimas clientes que a profissional agendou (as mais recentes primeiro, sem repetir e sem arquivadas).
+ * Alimenta "Clientes recentes" na primeira etapa do novo agendamento.
+ */
+export async function listRecentClients(professionalId: string, limit = 4): Promise<RecentClient[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("client_id, clients(id, full_name, phone, archived_at)")
+    .eq("professional_id", professionalId)
+    .order("created_at", { ascending: false })
+    .limit(80);
+  if (error) throw new Error("Não foi possível carregar as clientes recentes.");
+  return pickRecentClients((data ?? []) as unknown as RecentClientRow[], limit);
+}
+
+/**
+ * Intervalos ocupados da profissional em [from, to): só atendimentos que ocupam o horário
+ * (cancelados e faltas liberam). Usado para marcar os horários na etapa "Data e horário".
+ */
+export async function listBusyIntervals(professionalId: string, from: Date, to: Date): Promise<{ startAt: string; endAt: string }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("start_at, end_at")
+    .eq("professional_id", professionalId)
+    .in("status", ["awaiting_confirmation", "confirmed", "completed"])
+    .lt("start_at", to.toISOString())
+    .gt("end_at", from.toISOString())
+    .order("start_at", { ascending: true })
+    .limit(300);
+  if (error) throw new Error("Não foi possível carregar os horários.");
+  return (data ?? []).map((r) => ({ startAt: r.start_at as string, endAt: r.end_at as string }));
 }

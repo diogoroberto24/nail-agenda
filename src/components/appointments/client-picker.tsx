@@ -97,7 +97,7 @@ export function ClientPicker({
           autoComplete="off"
           aria-label="Buscar cliente por nome ou telefone"
           placeholder="Buscar por nome ou telefone"
-          className="pl-12"
+          className="pl-12 [&::-webkit-search-cancel-button]:hidden"
           aria-invalid={error ? true : undefined}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -138,7 +138,7 @@ export function ClientPicker({
   );
 }
 
-function QuickClientForm({
+export function QuickClientForm({
   create,
   onCancel,
   onCreated,

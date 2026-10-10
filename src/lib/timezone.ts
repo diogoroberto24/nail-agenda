@@ -35,8 +35,9 @@ export function weekdayOf(dateStr: string): number {
 }
 
 /** Domingo da semana que contém a data. */
-export function startOfWeek(dateStr: string): string {
-  return addDays(dateStr, -weekdayOf(dateStr));
+export function startOfWeek(dateStr: string, weekStartsOn: 0 | 1 = 0): string {
+  const diff = (weekdayOf(dateStr) - weekStartsOn + 7) % 7;
+  return addDays(dateStr, -diff);
 }
 
 function offsetMs(utc: Date, timeZone: string): number {

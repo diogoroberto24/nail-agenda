@@ -42,7 +42,7 @@ export default defineConfig({
     // visitante sem login: proteção de rotas, tela de login e manifesto do app
     { name: "visitante", testMatch: /visitante\.spec\.ts/, use: { ...mobile(390, 844), storageState: { cookies: [], origins: [] } } },
     // fluxo completo de uso, como a profissional usa no celular
-    { name: "fluxo-390", testMatch: /fluxo\.spec\.ts/, use: mobile(390, 844) },
+    { name: "fluxo-390", testMatch: /(fluxo|wizard)\.spec\.ts/, use: mobile(390, 844) },
     // responsividade nas larguras pedidas + tablet e desktop
     { name: "layout-320", testMatch: /layout\.spec\.ts/, use: mobile(320, 568) },
     { name: "layout-360", testMatch: /layout\.spec\.ts/, use: mobile(360, 800) },

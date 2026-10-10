@@ -47,7 +47,7 @@ async function AgendaContent({ searchParams }: { searchParams: PageProps<"/agend
   const selectedPro = professionals.some((p) => p.id === proParam) ? proParam : "todas";
 
   // uma única consulta traz a semana inteira: alimenta a lista do dia e as contagens da faixa semanal
-  const weekStart = startOfWeek(date);
+  const weekStart = startOfWeek(date, 1);
   const weekItems = await listAppointmentsInRange(
     zonedDateTimeToUtc(weekStart, "00:00"),
     zonedDateTimeToUtc(addDays(weekStart, 7), "00:00"),

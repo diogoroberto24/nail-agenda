@@ -32,10 +32,27 @@ function watchErrors(page: Page) {
 
 const card = (page: Page, text: string | RegExp) => page.locator("li").filter({ hasText: text }).filter({ has: page.locator("a[href^='/agendamentos/']") });
 
-async function pickClientAndService(page: Page, client: string) {
+/**
+ * Novo agendamento pelo passo a passo, até a tela de detalhes (resumo): cliente → serviço → data e horário.
+ * Data e horário entram pelo link de entrada (?data=&hora=), como quando se toca num horário da agenda.
+ */
+async function bookUntilDetails(page: Page, client: string, day: string, time: string) {
+  await page.goto(`/agendamentos/novo?data=${day}&hora=${time}`);
   await lbl(page, "Buscar cliente por nome ou telefone").fill(client);
   await page.getByRole("button", { name: new RegExp(client) }).first().click();
-  await page.getByRole("radio", { name: new RegExp(SERVICE) }).click();
+  await page.getByRole("button", { name: /Continuar/ }).click();
+  await page.getByRole("button", { name: new RegExp(SERVICE) }).click();
+  await page.getByRole("button", { name: /Continuar/ }).click();
+  await expect(page.getByRole("button", { name: time, pressed: true })).toBeVisible();
+  await page.getByRole("button", { name: /Continuar/ }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "4. Detalhes adicionais" })).toBeVisible();
+}
+
+/** Toca em "Agendar" e, na tela de sucesso, em "Ver na agenda". */
+async function saveAndOpenAgenda(page: Page) {
+  await page.getByRole("button", { name: "Agendar", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Agendamento realizado!" })).toBeVisible();
+  await page.getByRole("link", { name: "Ver na agenda" }).click();
 }
 
 test.describe("cadastros", () => {
@@ -144,17 +161,18 @@ test.describe("cadastros", () => {
 });
 
 test.describe("agendamento e status", () => {
-  test("agendar: resumo calcula o término e a agenda abre no dia com o atendimento em destaque", async ({ page }) => {
+  test("agendar: o resumo calcula o término, a tela de sucesso aparece e a agenda abre no dia com o atendimento em destaque", async ({ page }) => {
     const check = watchErrors(page);
-    await page.goto(`/agendamentos/novo?data=${DAY}`);
-    await pickClientAndService(page, CLIENT);
-    await lbl(page, "Horário").fill("10:00");
+    await bookUntilDetails(page, CLIENT, DAY, "10:00");
 
     const resumo = page.getByRole("region", { name: "Resumo" });
     await expect(resumo).toContainText(CLIENT);
-    await expect(resumo).toContainText("15/09/2031 às 10:00");
-    await expect(resumo).toContainText("10:45"); // 10:00 + 45 min (padrão do serviço)
-    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(resumo).toContainText("10:00 – 10:45"); // 10:00 + 45 min (padrão do serviço)
+    await page.getByRole("button", { name: "Agendar", exact: true }).click();
+
+    await expect(page.getByRole("heading", { name: "Agendamento realizado!" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Resumo do agendamento" })).toContainText(CLIENT);
+    await page.getByRole("link", { name: "Ver na agenda" }).click();
 
     await expect(page).toHaveURL(new RegExp(`/agenda\\?data=${DAY}&destaque=`));
     await expect(page.getByText("Atendimento salvo.")).toBeVisible();
@@ -166,26 +184,31 @@ test.describe("agendamento e status", () => {
   });
 
   test("a duração pode ser ajustada só neste atendimento (o serviço continua com 45 min)", async ({ page }) => {
-    await page.goto(`/agendamentos/novo?data=${DAY}`);
-    await pickClientAndService(page, CLIENT);
-    await lbl(page, "Horário").fill("14:00");
+    await bookUntilDetails(page, CLIENT, DAY, "14:00");
     await lbl(page, /Duração \(min\)/).fill("75");
-    await expect(page.getByRole("region", { name: "Resumo" })).toContainText("15:15");
-    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(page.getByRole("region", { name: "Resumo" })).toContainText("14:00 – 15:15");
+    await saveAndOpenAgenda(page);
     await expect(card(page, "14:00 – 15:15")).toBeVisible();
 
     await page.goto("/servicos");
     await expect(page.locator("li").filter({ hasText: SERVICE })).toContainText("45 min");
   });
 
-  test("conflito de horário: avisa em tempo real e só agenda com 'Agendar mesmo assim'", async ({ page }) => {
-    await page.goto(`/agendamentos/novo?data=${DAY}`);
-    await pickClientAndService(page, CLIENT);
-    await lbl(page, "Horário").fill("10:30");
+  test("conflito de horário: o aviso aparece ao agendar e só segue com 'Agendar mesmo assim'", async ({ page }) => {
+    await bookUntilDetails(page, CLIENT, DAY, "10:30");
+    await page.getByRole("button", { name: "Agendar", exact: true }).click();
 
-    await expect(page.getByText("Você já tem atendimento neste horário.")).toBeVisible();
-    await expect(page.getByText(/10:00 às 10:45/)).toBeVisible();
-    await page.getByRole("button", { name: "Agendar mesmo assim" }).click();
+    const dialog = page.getByRole("dialog", { name: "Horário ocupado" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(/10:00 às 10:45/);
+    // "Voltar" fecha o aviso sem salvar
+    await dialog.getByRole("button", { name: "Voltar" }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Agendar", exact: true }).click();
+    await page.getByRole("dialog", { name: "Horário ocupado" }).getByRole("button", { name: "Agendar mesmo assim" }).click();
+    await expect(page.getByRole("heading", { name: "Agendamento realizado!" })).toBeVisible();
+    await page.getByRole("link", { name: "Ver na agenda" }).click();
 
     await expect(page).toHaveURL(new RegExp(`/agenda\\?data=${DAY}`));
     await expect(card(page, "10:30 – 11:15")).toContainText("Horário sobreposto");
@@ -287,23 +310,27 @@ test.describe("telas preservadas pelo Next", () => {
     await expect(lbl(page, "Nome do serviço")).toHaveValue("");
     await expect(lbl(page, /Preço padrão/)).toHaveValue("");
 
-    // agendamento: criar, voltar pelo botão "Agendar" da própria agenda e criar outro
+    // agendamento: criar, voltar pelo botão "Novo agendamento" e criar outro
     const day = "2031-10-10";
-    await page.goto(`/agendamentos/novo?data=${day}`);
-    await pickClientAndService(page, CLIENT);
-    await lbl(page, "Horário").fill("09:00");
-    await page.getByRole("button", { name: "Agendar" }).click();
+    await bookUntilDetails(page, CLIENT, day, "09:00");
+    await saveAndOpenAgenda(page);
     await expect(card(page, "09:00 – 09:45")).toBeVisible();
 
     await page.getByRole("link", { name: "Novo agendamento" }).click(); // botão flutuante, navegação interna
-    await expect(page).toHaveURL(new RegExp(`/agendamentos/novo\\?data=${day}`));
-    await expect(lbl(page, "Horário")).toHaveValue("");
-    await expect(page.getByRole("radio", { name: new RegExp(SERVICE) })).toHaveAttribute("aria-checked", "false");
-    await expect(page.getByRole("region", { name: "Resumo" })).not.toContainText(CLIENT);
-
-    await pickClientAndService(page, CLIENT);
-    await lbl(page, "Horário").fill("13:00");
-    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(page).toHaveURL(/\/agendamentos\/novo\/servico$|\/agendamentos\/novo\/cliente$/);
+    await expect(page.getByRole("button", { pressed: true })).toHaveCount(0); // nada ficou marcado
+    if (/cliente$/.test(page.url())) {
+      await lbl(page, "Buscar cliente por nome ou telefone").fill(CLIENT);
+      await page.getByRole("button", { name: new RegExp(CLIENT) }).first().click();
+      await page.getByRole("button", { name: /Continuar/ }).click();
+    }
+    await page.getByRole("button", { name: new RegExp(SERVICE) }).click();
+    await page.getByRole("button", { name: /Continuar/ }).click();
+    // o dia da agenda vem preenchido, mas o horário do agendamento anterior NÃO
+    await expect(page.getByRole("button", { name: "09:00", pressed: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "13:00", exact: true }).click();
+    await page.getByRole("button", { name: /Continuar/ }).click();
+    await saveAndOpenAgenda(page);
 
     // os DOIS existem: o segundo não foi engolido como "reenvio" do primeiro
     await expect(card(page, "13:00 – 13:45")).toBeVisible();

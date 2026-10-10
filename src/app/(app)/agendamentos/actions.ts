@@ -12,7 +12,9 @@ import {
   type SetStatusResult,
 } from "@/lib/appointments/service";
 import type { AppointmentStatus } from "@/lib/appointments/status";
-import { searchActiveClients } from "@/lib/data/appointments";
+import { listBusyIntervals, searchActiveClients } from "@/lib/data/appointments";
+import type { BusyInterval } from "@/lib/appointments/slots";
+import { addDays, isValidDateString, zonedDayRange } from "@/lib/timezone";
 import { formatBrazilPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 
@@ -90,4 +92,13 @@ export async function setAppointmentStatusAction(
   revalidatePath(`/agendamentos/${id}`);
   revalidatePath("/clientes");
   return result;
+}
+
+/** Horários ocupados da própria profissional na semana que começa em `weekStart` (segunda). */
+export async function listBusyWeekAction(weekStart: string): Promise<BusyInterval[]> {
+  const me = await getCurrentProfessional();
+  if (!me || !isValidDateString(String(weekStart))) return [];
+  const from = zonedDayRange(weekStart).start;
+  const to = zonedDayRange(addDays(weekStart, 6)).end;
+  return listBusyIntervals(me.professionalId, from, to);
 }

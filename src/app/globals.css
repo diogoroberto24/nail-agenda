@@ -98,6 +98,8 @@
   h3 {
     font-family: var(--font-heading);
     letter-spacing: -0.01em;
+    /* algarismos alinhados à linha de base: sem isso o "1" da fonte dos títulos parece um "I" */
+    font-variant-numeric: lining-nums;
   }
   /* inputs a 16px evitam o zoom automático do iOS ao focar */
   input,

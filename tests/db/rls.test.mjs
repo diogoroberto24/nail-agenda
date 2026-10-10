@@ -34,9 +34,11 @@ await db.exec(readFileSync(MIG + "20261009000002_rls_policies.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261009000003_service_role_grants.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261010000001_agenda_privada.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261010000002_cadastro_convite.sql", "utf8"));
+await db.exec(readFileSync(MIG + "20261011000001_aniversario_clientes.sql", "utf8"));
 // as migrações novas são idempotentes: rodar de novo não pode falhar
 await db.exec(readFileSync(MIG + "20261010000001_agenda_privada.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261010000002_cadastro_convite.sql", "utf8"));
+await db.exec(readFileSync(MIG + "20261011000001_aniversario_clientes.sql", "utf8"));
 record("migrações 0001, 0002 e 0003 executam sem erro", true);
 
 // ---- dados base (superusuária = papel de administração)
@@ -279,6 +281,37 @@ await new Promise((r) => setTimeout(r, 20));
 await db.query(`update public.clients set notes = 'n' where id = $1`, [C1]);
 const after = (await rows("select updated_at u from public.clients where id = $1", [C1]))[0].u;
 record("updated_at é atualizado automaticamente", after > before);
+
+// ---- aniversário da cliente
+const setBirth = (who, d, m, y) => as(who, () => db.query("update public.clients set birth_day = $1, birth_month = $2, birth_year = $3 where id = $4", [d, m, y, C1]));
+const birth = async () => (await rows("select birth_day d, birth_month m, birth_year y from public.clients where id = $1", [C1]))[0];
+
+record("cliente sem aniversário continua válida", (await birth()).d === null);
+await setBirth(U.A, 15, 3, null);
+record("A grava dia e mês (ano opcional)", JSON.stringify(await birth()) === JSON.stringify({ d: 15, m: 3, y: null }));
+await setBirth(U.B, 29, 2, 2000);
+record("B (colega) também edita o cadastro compartilhado, inclusive 29/02 em ano bissexto", JSON.stringify(await birth()) === JSON.stringify({ d: 29, m: 2, y: 2000 }));
+await setBirth(U.A, 29, 2, null);
+record("29/02 sem ano é aceito", (await birth()).d === 29);
+for (const [d, m, y, why] of [
+  [31, 2, null, "31/02"], [30, 2, null, "30/02"], [31, 4, null, "31/04"], [0, 5, null, "dia 0"], [10, 13, null, "mês 13"], [10, 0, null, "mês 0"],
+  [29, 2, 2001, "29/02 em ano não bissexto"], [29, 2, 1900, "29/02 em 1900 (não bissexto)"], [10, 5, 1899, "ano 1899"], [10, 5, 2101, "ano 2101"],
+]) {
+  await expectError("recusa " + why, () => setBirth(U.A, d, m, y), /clients_birthday_valid|check constraint/i);
+}
+await expectError("recusa dia sem mês", () => as(U.A, () => db.query("update public.clients set birth_day = 10, birth_month = null, birth_year = null where id = $1", [C1])), /check constraint/i);
+await expectError("recusa mês sem dia", () => as(U.A, () => db.query("update public.clients set birth_day = null, birth_month = 10, birth_year = null where id = $1", [C1])), /check constraint/i);
+await expectError("recusa só o ano", () => as(U.A, () => db.query("update public.clients set birth_day = null, birth_month = null, birth_year = 1990 where id = $1", [C1])), /check constraint/i);
+await setBirth(U.A, 29, 2, 2024);
+record("29/02/2024 (bissexto) é aceito", (await birth()).y === 2024);
+await expectError("anon não altera aniversário", () => as(null, () => db.query("update public.clients set birth_day = 1, birth_month = 1 where id = $1", [C1])), /permission denied/i);
+await expectError("D (outro salão) não altera aniversário de cliente do salão 1", async () => {
+  const r = await as(U.D, () => db.query("update public.clients set birth_day = 1, birth_month = 1 where id = $1", [C1]));
+  if (r.affectedRows === 0) throw new Error("0 linhas afetadas");
+}, /0 linhas/);
+await db.query("update public.clients set birth_day = null, birth_month = null, birth_year = null where id = $1", [C1]);
+const created = await as(U.A, () => db.query("insert into public.clients (salon_id, full_name, phone, created_by, birth_day, birth_month) values ($1, 'Nova com aniversário', '5511999990077', $2, 7, 9) returning id", [S1, U.A]));
+record("cliente pode ser cadastrada já com aniversário", created.rows.length === 1);
 
 // ---- cadastro com código de convite
 const signup = (id, meta) => db.query("insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)", [id, id + "@novo.test", JSON.stringify(meta)]);

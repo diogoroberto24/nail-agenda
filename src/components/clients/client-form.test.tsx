@@ -160,3 +160,48 @@ describe("ClientForm", () => {
     expect(actions.create).not.toHaveBeenCalled();
   });
 });
+
+describe("ClientForm: aniversário", () => {
+  it("o campo é opcional: cadastrar sem aniversário funciona e envia o campo vazio", async () => {
+    const { actions, user } = setup();
+    await fill(user, "Maria Silva", "11999998888");
+    await user.click(screen.getByRole("button", { name: "Cadastrar cliente" }));
+    await waitFor(() => expect(actions.create).toHaveBeenCalled());
+    expect((actions.create as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({ birthday: "" });
+  });
+
+  it("aceita dia e mês, e arruma o formato ao sair do campo (5/3 vira 05/03)", async () => {
+    const { actions, user } = setup();
+    await fill(user, "Maria Silva", "11999998888");
+    const campo = screen.getByLabelText(/Aniversário/);
+    await user.type(campo, "5/3");
+    await user.tab();
+    expect(campo).toHaveValue("05/03");
+    await user.click(screen.getByRole("button", { name: "Cadastrar cliente" }));
+    await waitFor(() => expect(actions.create).toHaveBeenCalled());
+    expect((actions.create as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({ birthday: "05/03" });
+  });
+
+  it("aceita o ano quando informado", async () => {
+    const { actions, user } = setup();
+    await fill(user, "Maria Silva", "11999998888");
+    await user.type(screen.getByLabelText(/Aniversário/), "15/03/1990");
+    await user.click(screen.getByRole("button", { name: "Cadastrar cliente" }));
+    await waitFor(() => expect(actions.create).toHaveBeenCalled());
+    expect((actions.create as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({ birthday: "15/03/1990" });
+  });
+
+  it("data inválida mostra o erro junto do campo e não envia", async () => {
+    const { actions, user } = setup();
+    await fill(user, "Maria Silva", "11999998888");
+    await user.type(screen.getByLabelText(/Aniversário/), "31/02");
+    await user.click(screen.getByRole("button", { name: "Cadastrar cliente" }));
+    expect(await screen.findByText(/Data inválida\. Use dia\/mês/)).toBeInTheDocument();
+    expect(actions.create).not.toHaveBeenCalled();
+  });
+
+  it("ao editar, o aniversário já cadastrado aparece preenchido", () => {
+    setup({}, { clientId: "c-1", defaultValues: { fullName: "Maria", phone: "(11) 99999-8888", birthday: "15/03/1990" } });
+    expect(screen.getByLabelText(/Aniversário/)).toHaveValue("15/03/1990");
+  });
+});

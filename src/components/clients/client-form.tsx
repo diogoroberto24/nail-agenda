@@ -17,6 +17,7 @@ import {
   type DuplicateClient,
   type SaveClientResult,
 } from "@/app/(app)/clientes/actions";
+import { formatBirthday, parseBirthday } from "@/lib/clients/birthday";
 import { clientSchema, type ClientFormValues } from "@/lib/clients/schema";
 import { formatBrazilPhone, normalizeBrazilPhone } from "@/lib/phone";
 import { useFormIds } from "@/lib/use-form-ids";
@@ -58,10 +59,11 @@ export function ClientForm({
     formState: { errors },
   } = useForm<ClientFormValues>({
     resolver: zodResolver(clientSchema),
-    defaultValues: { fullName: "", phone: "", notes: "", ...defaultValues },
+    defaultValues: { fullName: "", phone: "", notes: "", birthday: "", ...defaultValues },
   });
 
   const phoneField = register("phone");
+  const birthdayField = register("birthday");
 
   function submit(values: ClientFormValues, allowDuplicate: boolean) {
     setServerError(null);
@@ -172,6 +174,30 @@ export function ClientForm({
           </Button>
         </div>
       )}
+
+      <Field
+        id={id("birthday")}
+        label="Aniversário"
+        optional
+        error={errors.birthday?.message}
+        hint="Dia e mês, ex.: 15/03. O ano é opcional."
+      >
+        <Input
+          id={id("birthday")}
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="dd/mm"
+          aria-invalid={errors.birthday ? true : undefined}
+          aria-describedby={`${id("birthday")}-msg`}
+          {...birthdayField}
+          onBlur={(e) => {
+            birthdayField.onBlur(e);
+            // ao sair do campo, arruma o formato (5/3 vira 05/03)
+            const parsed = parseBirthday(getValues("birthday") ?? "");
+            if (parsed) setValue("birthday", formatBirthday(parsed));
+          }}
+        />
+      </Field>
 
       <Field id={id("notes")} label="Observações" optional error={errors.notes?.message}>
         <Textarea

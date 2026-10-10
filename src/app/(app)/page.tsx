@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CalendarDays, CalendarHeart, Plus } from "lucide-react";
 import { AppointmentCard } from "@/components/agenda/appointment-card";
+import { BirthdaysToday } from "@/components/birthdays-today";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
   listUpcomingAppointments,
   type AppointmentItem,
 } from "@/lib/data/appointments";
+import { listBirthdaysToday } from "@/lib/data/clients";
 import { greetingForHour } from "@/lib/greeting";
 import { addDays, formatLongDateCapitalized, toZonedParts, zonedDateTimeToUtc } from "@/lib/timezone";
 import { firstName } from "@/lib/whatsapp-message";
@@ -37,10 +39,11 @@ async function Home() {
 
   const dayStart = zonedDateTimeToUtc(today, "00:00");
   // a RLS já entrega só os atendimentos da própria profissional
-  const [todayItems, upcoming, pending] = await Promise.all([
+  const [todayItems, upcoming, pending, birthdays] = await Promise.all([
     listAppointmentsInRange(dayStart, zonedDateTimeToUtc(addDays(today, 1), "00:00")),
     listUpcomingAppointments(now, undefined, 6),
     countPendingConfirmations(dayStart),
+    listBirthdaysToday(today),
   ]);
 
   const countBy = (status: AppointmentItem["status"]) => todayItems.filter((a) => a.status === status).length;
@@ -71,6 +74,8 @@ async function Home() {
             </p>
           )}
         </section>
+
+        <BirthdaysToday people={birthdays} today={today} professionalName={me.displayName} />
 
         <section aria-labelledby="proximos" className="space-y-3">
           <h2 id="proximos" className="flex items-center gap-2 text-2xl font-semibold text-cocoa">

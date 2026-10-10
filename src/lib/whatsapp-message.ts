@@ -43,3 +43,23 @@ export function buildConfirmationMessage({ clientName, startAt, serviceName, pro
     "Aguardamos você! Será um prazer te atender.",
   ].join("\n");
 }
+
+export type BirthdayMessageInput = {
+  /** nome completo da cliente; a mensagem usa só o primeiro nome */
+  clientName: string;
+  professionalName: string;
+};
+
+/** Mensagem de parabéns no dia do aniversário (enviada pelo WhatsApp com um toque). */
+export function buildBirthdayMessage({ clientName, professionalName }: BirthdayMessageInput): string {
+  return [
+    `Olá ${firstName(clientName)}! 🎂💖`,
+    "",
+    "Hoje é o seu dia e não poderíamos deixar de te desejar um feliz aniversário!",
+    "",
+    "Que seja um dia lindo, cheio de alegria, saúde e muito carinho.",
+    "",
+    "Com carinho,",
+    `${professionalName} ✨`,
+  ].join("\n");
+}

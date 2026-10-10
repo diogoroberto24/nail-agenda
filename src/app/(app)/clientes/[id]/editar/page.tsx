@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ClientForm } from "@/components/clients/client-form";
 import { PageHeader } from "@/components/page-header";
+import { birthdayText } from "@/lib/clients/birthday";
 import { getClient } from "@/lib/data/clients";
 import { formatBrazilPhone } from "@/lib/phone";
 
@@ -31,6 +32,7 @@ async function EditClient({ params }: { params: PageProps<"/clientes/[id]/editar
           fullName: client.full_name,
           phone: formatBrazilPhone(client.phone),
           notes: client.notes ?? "",
+          birthday: birthdayText(client),
         }}
       />
     </>

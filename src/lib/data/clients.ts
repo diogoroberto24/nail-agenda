@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { birthdayPairsFor } from "@/lib/clients/birthday";
 import { buildClientSearchFilter } from "@/lib/clients/search";
 import type { AppointmentStatus } from "@/lib/appointments/status";
 
@@ -12,9 +13,12 @@ export type ClientRow = {
   phone: string;
   notes: string | null;
   archived_at: string | null;
+  birth_day: number | null;
+  birth_month: number | null;
+  birth_year: number | null;
 };
 
-const CLIENT_COLUMNS = "id, full_name, phone, notes, archived_at";
+const CLIENT_COLUMNS = "id, full_name, phone, notes, archived_at, birth_day, birth_month, birth_year";
 
 /**
  * Lista clientes do salão (a RLS já restringe ao salão da usuária).
@@ -76,4 +80,24 @@ export async function getClientHistory(clientId: string): Promise<ClientHistoryI
     .limit(200);
   if (error) throw new Error("Não foi possível carregar o histórico.");
   return (data ?? []) as unknown as ClientHistoryItem[];
+}
+
+export type BirthdayClient = { id: string; full_name: string; phone: string; birth_year: number | null };
+
+/**
+ * Clientes ativas que fazem aniversário hoje (todas as do salão: o cadastro é compartilhado).
+ * Em 28/02 de ano não bissexto inclui quem faz aniversário em 29/02.
+ */
+export async function listBirthdaysToday(today: string): Promise<BirthdayClient[]> {
+  const pairs = birthdayPairsFor(today);
+  const supabase = await createClient();
+  const filter = pairs.map((p) => `and(birth_day.eq.${p.day},birth_month.eq.${p.month})`).join(",");
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, full_name, phone, birth_year")
+    .is("archived_at", null)
+    .or(filter)
+    .limit(100);
+  if (error) throw new Error("Não foi possível carregar os aniversariantes.");
+  return (data ?? []).sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR", { sensitivity: "base" }));
 }

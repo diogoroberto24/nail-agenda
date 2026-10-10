@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarPlus, CircleCheck, History, Pencil } from "lucide-react";
+import { Cake, CalendarPlus, CircleCheck, History, Pencil } from "lucide-react";
 import { ArchiveButton } from "@/components/clients/archive-button";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 import { buttonVariants } from "@/components/ui/button";
+import { birthdayText } from "@/lib/clients/birthday";
 import { getClient, getClientHistory } from "@/lib/data/clients";
 import { formatDateTime, formatDuration } from "@/lib/datetime";
 import { formatBRL } from "@/lib/money";
@@ -52,6 +53,12 @@ async function Client({
 
         <section aria-label="Contato" className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-soft">
           <p className="text-lg font-medium text-cocoa">{formatBrazilPhone(client.phone)}</p>
+          {birthdayText(client) && (
+            <p className="flex items-center gap-2 text-[0.95rem] text-taupe-soft">
+              <Cake className="size-4 text-rose-deep" aria-hidden />
+              Aniversário: {birthdayText(client)}
+            </p>
+          )}
           {client.notes && <p className="whitespace-pre-line text-[0.95rem] text-taupe-soft">{client.notes}</p>}
           <div className="flex flex-col gap-3 pt-1 sm:flex-row">
             <WhatsAppLink phone={client.phone} name={client.full_name} variant="button" className="sm:flex-1" />

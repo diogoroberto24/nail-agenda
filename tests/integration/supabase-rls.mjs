@@ -51,8 +51,23 @@ try {
   {
     const { error } = await anon.auth.signInWithPassword({ email: env.SEED_PRO1_EMAIL, password: "senha-errada-xyz-123" });
     check("senha errada é recusada", Boolean(error), "entrou com senha errada");
-    const s = await anon.auth.signUp({ email: `__teste__${Date.now()}@example.com`, password: "SenhaTeste12345" });
-    check("cadastro público está desligado", Boolean(s.error), "signUp foi aceito");
+    // o cadastro está ligado (tela /cadastro), mas sem código de convite a conta nasce SEM acesso a nada
+    const email = `__teste__${Date.now()}@example.com`;
+    const s = await anon.auth.signUp({ email, password: "SenhaTeste12345" });
+    if (s.data?.user?.id) {
+      const uid = s.data.user.id;
+      const m = await admin.from("salon_members").select("user_id").eq("user_id", uid);
+      const pr = await admin.from("professionals").select("id").eq("user_id", uid);
+      check("cadastro sem código de convite: conta sem salão e sem profissional", m.data?.length === 0 && pr.data?.length === 0, JSON.stringify([m.data, pr.data]));
+      if (s.data.session) {
+        const c = await anon.from("clients").select("id");
+        const ap = await anon.from("appointments").select("id");
+        check("cadastro sem código de convite: não lê clientes nem atendimentos", (c.data ?? []).length === 0 && (ap.data ?? []).length === 0, JSON.stringify([c.data?.length, ap.data?.length]));
+      }
+      await admin.auth.admin.deleteUser(uid);
+    } else {
+      check("cadastro sem código de convite é recusado ou fica sem acesso", Boolean(s.error), "signUp sem usuário e sem erro");
+    }
   }
 
   // ---- com login
@@ -68,15 +83,16 @@ try {
   const salonId = salons[0].id;
 
   const { data: pros } = await A.client.from("professionals").select("id, user_id, display_name, active");
-  check("A vê as 2 profissionais do salão", pros?.length === 2, String(pros?.length));
   const proA = pros.find((p) => p.user_id === A.userId);
   const proB = pros.find((p) => p.user_id === B.userId);
+  // o salão pode ter mais profissionais (cadastro com convite): confere só que as duas de teste aparecem
+  check("A vê as profissionais do salão (inclui as 2 de teste)", Boolean(proA && proB) && pros.length >= 2, String(pros?.length));
   check("cada conta está ligada à sua profissional", Boolean(proA && proB && proA.id !== proB.id));
 
   const { data: members } = await B.client.from("salon_members").select("user_id, role");
-  check("B vê os 2 membros do salão", members?.length === 2, String(members?.length));
+  check("B vê os membros do salão (pelo menos os 2 de teste)", members?.length >= 2, String(members?.length));
   const { data: profiles } = await A.client.from("profiles").select("id");
-  check("trigger criou os profiles (A vê 2)", profiles?.length === 2, String(profiles?.length));
+  check("trigger criou os profiles (A vê pelo menos 2)", profiles?.length >= 2, String(profiles?.length));
 
   // ---- clientes (compartilhados)
   const { data: cli, error: cliErr } = await A.client

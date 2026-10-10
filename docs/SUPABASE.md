@@ -53,6 +53,9 @@ Rode **uma vez cada, nesta ordem**. Se rodar de novo, dará erro de "já existe"
 
 4. Nova query: `supabase/migrations/20261010000001_agenda_privada.sql` (cada profissional passa a ver só os próprios atendimentos).
 
+## 5c. Aniversário da cliente
+Nova query: `supabase/migrations/20261011000001_aniversario_clientes.sql`. **Rode antes de publicar o código novo**: o app passa a ler as colunas de aniversário, e sem a migração as telas de clientes e o Início dão erro.
+
 ## 5b. Cadastro com código de convite
 1. Nova query: `supabase/migrations/20261010000002_cadastro_convite.sql`.
 2. Nova query, com o código que **você** escolher (8 caracteres ou mais; só você e quem receber o convite sabem):

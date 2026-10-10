@@ -38,7 +38,28 @@ describe("formatação", () => {
 describe("clientSchema", () => {
   it("aceita dados válidos e normaliza para o banco", () => {
     const parsed = clientSchema.parse({ fullName: "  Maria Silva ", phone: "(11) 99999-8888", notes: "" });
-    expect(toClientRow(parsed)).toEqual({ full_name: "Maria Silva", phone: "5511999998888", notes: null });
+    expect(toClientRow(parsed)).toEqual({
+      full_name: "Maria Silva",
+      phone: "5511999998888",
+      notes: null,
+      birth_day: null,
+      birth_month: null,
+      birth_year: null,
+    });
+  });
+  it("aniversário: dia e mês (ano opcional) vão para as colunas; vazio vira sem aniversário", () => {
+    const base = { fullName: "Ana", phone: "11999998888" };
+    expect(toClientRow(clientSchema.parse({ ...base, birthday: "15/03" }))).toMatchObject({ birth_day: 15, birth_month: 3, birth_year: null });
+    expect(toClientRow(clientSchema.parse({ ...base, birthday: " 5/3/1990 " }))).toMatchObject({ birth_day: 5, birth_month: 3, birth_year: 1990 });
+    expect(toClientRow(clientSchema.parse({ ...base, birthday: "" }))).toMatchObject({ birth_day: null, birth_month: null, birth_year: null });
+    expect(toClientRow(clientSchema.parse(base))).toMatchObject({ birth_day: null, birth_month: null, birth_year: null });
+  });
+  it("aniversário inválido é recusado com mensagem em português", () => {
+    for (const birthday of ["31/02", "10/13", "abc", "15/03/90", "29/02/2001"]) {
+      const r = clientSchema.safeParse({ fullName: "Ana", phone: "11999998888", birthday });
+      expect(r.success, birthday).toBe(false);
+      if (!r.success) expect(r.error.issues[0].message).toBe("Data inválida. Use dia/mês, ex.: 15/03 (o ano é opcional).");
+    }
   });
   it("guarda observações quando informadas", () => {
     const parsed = clientSchema.parse({ fullName: "Ana", phone: "11999998888", notes: " alérgica a acetona " });

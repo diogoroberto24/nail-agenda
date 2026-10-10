@@ -94,8 +94,8 @@ describe("clientes recentes no banco real", () => {
   it("clientes que só a colega atendeu não aparecem nas minhas recentes", async () => {
     const recent = await recentFor(A.db, A.proId, 10);
     expect(recent.some((c) => c.fullName.includes("Eva"))).toBe(false);
-    const hers = await recentFor(A.db, proB, 10);
-    expect(hers.map((c) => c.fullName.replace(`${MARK} `, "")).filter((n) => n.startsWith("Eva"))).toEqual(["Eva (só da colega)"]);
+    // e, com a agenda privada, eu nem consigo consultar as marcações dela
+    expect(await recentFor(A.db, proB, 10)).toEqual([]);
   });
 
   it("o limite é respeitado e as relações (nome e telefone) vêm junto", async () => {
@@ -124,8 +124,9 @@ describe("horários ocupados no banco real (etapa Data e horário)", () => {
   it("devolve só os atendimentos da PRÓPRIA profissional no período, e não os da colega", async () => {
     const mine = await busyFor(A.db, A.proId, "2031-11-01T00:00:00Z", "2031-11-08T00:00:00Z");
     expect(mine).toHaveLength(5); // Ana, Bia, Ana, Dani, Carla (a da colega, em 06/11, fica de fora)
+    // os atendimentos da colega ficam invisíveis para mim (agenda privada)
     const hers = await busyFor(A.db, proB, "2031-11-01T00:00:00Z", "2031-11-08T00:00:00Z");
-    expect(hers).toHaveLength(1);
+    expect(hers).toHaveLength(0);
   });
 
   it("respeita os limites do período (meio aberto)", async () => {

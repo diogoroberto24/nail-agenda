@@ -12,11 +12,10 @@ import { useFormIds } from "@/lib/use-form-ids";
 type DateNavProps = {
   date: string;
   today: string;
-  pro: string;
 };
 
 /** Data selecionada, dia anterior/seguinte, "Hoje" e seletor de data nativo (bom no celular). */
-export function DateNav({ date, today, pro }: DateNavProps) {
+export function DateNav({ date, today }: DateNavProps) {
   const id = useFormIds();
   const router = useRouter();
   const isToday = date === today;
@@ -25,7 +24,7 @@ export function DateNav({ date, today, pro }: DateNavProps) {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Link
-          href={agendaHref({ date: addDays(date, -1), pro })}
+          href={agendaHref({ date: addDays(date, -1) })}
           aria-label="Dia anterior"
           className={buttonVariants({ variant: "outline", size: "icon" })}
         >
@@ -35,7 +34,7 @@ export function DateNav({ date, today, pro }: DateNavProps) {
           {formatLongDateCapitalized(date)}
         </h2>
         <Link
-          href={agendaHref({ date: addDays(date, 1), pro })}
+          href={agendaHref({ date: addDays(date, 1) })}
           aria-label="Próximo dia"
           className={buttonVariants({ variant: "outline", size: "icon" })}
         >
@@ -45,7 +44,7 @@ export function DateNav({ date, today, pro }: DateNavProps) {
 
       <div className="flex items-center gap-2">
         <Link
-          href={agendaHref({ date: today, pro })}
+          href={agendaHref({ date: today })}
           aria-current={isToday ? "date" : undefined}
           className={cn(buttonVariants({ variant: isToday ? "secondary" : "outline" }), "flex-1")}
         >
@@ -59,7 +58,7 @@ export function DateNav({ date, today, pro }: DateNavProps) {
           type="date"
           value={date}
           onChange={(e) => {
-            if (isValidDateString(e.target.value)) router.replace(agendaHref({ date: e.target.value, pro }));
+            if (isValidDateString(e.target.value)) router.replace(agendaHref({ date: e.target.value }));
           }}
           className="h-11 flex-1 rounded-xl border border-input bg-card px-3 text-base text-cocoa"
         />

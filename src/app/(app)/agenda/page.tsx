@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { CalendarHeart, CircleCheck, Plus } from "lucide-react";
 import { AppointmentCard } from "@/components/agenda/appointment-card";
 import { DateNav } from "@/components/agenda/date-nav";
-import { ProfessionalFilter } from "@/components/agenda/professional-filter";
 import { WeekStrip } from "@/components/agenda/week-strip";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -13,7 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { getCurrentProfessional } from "@/lib/auth/session";
 import { intervalsOverlap, occupiesSlot } from "@/lib/appointments/conflicts";
 import { agendaHref, parseDateParam } from "@/lib/agenda-url";
-import { listAppointmentsInRange, listProfessionals, type AppointmentItem } from "@/lib/data/appointments";
+import { listAppointmentsInRange, type AppointmentItem } from "@/lib/data/appointments";
 import { addDays, startOfWeek, toZonedParts, todayInZone, zonedDateTimeToUtc } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "Agenda" };
@@ -42,17 +41,14 @@ async function AgendaContent({ searchParams }: { searchParams: PageProps<"/agend
   const rescheduled = params.remarcado === "1";
   const cancelled = params.cancelado === "1";
 
-  const professionals = await listProfessionals();
-  const proParam = typeof params.pro === "string" ? params.pro : "todas";
-  const selectedPro = professionals.some((p) => p.id === proParam) ? proParam : "todas";
-
   // uma única consulta traz a semana inteira: alimenta a lista do dia e as contagens da faixa semanal
   const weekStart = startOfWeek(date, 1);
   const weekItems = await listAppointmentsInRange(
     zonedDateTimeToUtc(weekStart, "00:00"),
     zonedDateTimeToUtc(addDays(weekStart, 7), "00:00"),
   );
-  const visible = weekItems.filter((a) => selectedPro === "todas" || a.professional_id === selectedPro);
+  // a RLS já entrega só os atendimentos da própria profissional
+  const visible = weekItems;
 
   const counts: Record<string, number> = {};
   for (const a of visible) {
@@ -81,13 +77,8 @@ async function AgendaContent({ searchParams }: { searchParams: PageProps<"/agend
         </p>
       )}
 
-      <DateNav date={date} today={today} pro={selectedPro} />
-      <WeekStrip date={date} today={today} pro={selectedPro} counts={counts} />
-      <ProfessionalFilter
-        hrefFor={(pro) => agendaHref({ date, pro })}
-        selected={selectedPro}
-        professionals={professionals.map((p) => ({ id: p.id, name: p.display_name, isMe: p.id === me.professionalId }))}
-      />
+      <DateNav date={date} today={today} />
+      <WeekStrip date={date} today={today} counts={counts} />
 
       <p className="text-sm text-taupe-soft" aria-live="polite">
         {dayItems.length === 0
@@ -116,8 +107,7 @@ async function AgendaContent({ searchParams }: { searchParams: PageProps<"/agend
             <AppointmentCard
               key={item.id}
               item={item}
-              mine={item.professional_id === me.professionalId}
-              afterCancelHref={agendaHref({ date, pro: selectedPro, cancelled: true })}
+              afterCancelHref={agendaHref({ date, cancelled: true })}
               overlaps={overlapping.has(item.id)}
               highlighted={item.id === highlightId}
             />

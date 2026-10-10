@@ -37,9 +37,8 @@ async function Appointment({ params }: { params: PageProps<"/agendamentos/[id]">
   if (!item) notFound();
 
   const date = toZonedParts(item.start_at).date;
-  const mine = item.professional_id === me.professionalId;
   const open = isOpenStatus(item.status);
-  const editable = mine && open;
+  const editable = open;
   const clientName = item.clients?.full_name ?? "Cliente";
   // a mensagem de confirmação só faz sentido enquanto o atendimento ainda vai acontecer
   const message = !open
@@ -106,25 +105,18 @@ async function Appointment({ params }: { params: PageProps<"/agendamentos/[id]">
               Abrir o WhatsApp não muda o status. Depois que a cliente responder, toque em Confirmar atendimento.
             </p>
           )}
-          {mine && (
-            <StatusActions
-              appointmentId={item.id}
-              status={item.status}
-              clientName={clientName}
-              variant="detail"
-              afterCancelHref={agendaHref({ date, cancelled: true })}
-            />
-          )}
+          <StatusActions
+            appointmentId={item.id}
+            status={item.status}
+            clientName={clientName}
+            variant="detail"
+            afterCancelHref={agendaHref({ date, cancelled: true })}
+          />
           {editable && (
             <Link href={`/agendamentos/${item.id}/editar`} className={buttonVariants({ variant: "outline", size: "lg", className: "w-full" })}>
               <Pencil aria-hidden />
               Editar ou remarcar
             </Link>
-          )}
-          {!mine && (
-            <p className="rounded-xl bg-muted px-4 py-3 text-sm text-taupe-soft">
-              Este atendimento é de {item.professionals?.display_name ?? "outra profissional"}. Você pode consultá-lo, mas só ela pode alterá-lo.
-            </p>
           )}
         </div>
       </div>

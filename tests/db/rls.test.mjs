@@ -32,6 +32,11 @@ await db.exec(`
 await db.exec(readFileSync(MIG + "20261009000001_schema.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261009000002_rls_policies.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261009000003_service_role_grants.sql", "utf8"));
+await db.exec(readFileSync(MIG + "20261010000001_agenda_privada.sql", "utf8"));
+await db.exec(readFileSync(MIG + "20261010000002_cadastro_convite.sql", "utf8"));
+// as migrações novas são idempotentes: rodar de novo não pode falhar
+await db.exec(readFileSync(MIG + "20261010000001_agenda_privada.sql", "utf8"));
+await db.exec(readFileSync(MIG + "20261010000002_cadastro_convite.sql", "utf8"));
 record("migrações 0001, 0002 e 0003 executam sem erro", true);
 
 // ---- dados base (superusuária = papel de administração)
@@ -193,8 +198,19 @@ await expectError("B NÃO altera atendimento da A (0 linhas)", async () => {
 await expectError("B NÃO cria atendimento para a A", () => as(U.B, () => ins(PA, SA, C1, T0, 40, 55)), /row-level security/i);
 await expectError("A NÃO passa o próprio atendimento para a B",
   () => as(U.A, () => db.query(`update public.appointments set professional_id = $1 where id = $2`, [PB, apA])), /row-level security|foreign key/i);
-record("B enxerga o atendimento da A (agenda compartilhada)",
-  (await as(U.B, () => rows("select id from public.appointments where id = $1", [apA]))).length === 1);
+// agenda privada: cada profissional vê só os próprios atendimentos
+record("B NÃO enxerga o atendimento da A (agenda privada)",
+  (await as(U.B, () => rows("select id from public.appointments where id = $1", [apA]))).length === 0);
+record("B não vê nenhum atendimento da A nem numa listagem geral",
+  (await as(U.B, () => rows("select id from public.appointments where professional_id = $1", [PA]))).length === 0);
+record("A enxerga o próprio atendimento",
+  (await as(U.A, () => rows("select id from public.appointments where id = $1", [apA]))).length === 1);
+record("A só vê atendimentos da própria profissional",
+  (await as(U.A, () => rows("select distinct professional_id from public.appointments"))).every((r) => r.professional_id === PA));
+record("clientes continuam compartilhados (B vê cliente cadastrada pela A)",
+  (await as(U.B, () => rows("select id from public.clients where id = $1", [C1]))).length === 1);
+record("serviços continuam compartilhados (B vê serviço da A)",
+  (await as(U.B, () => rows("select id from public.services where id = $1", [SA]))).length === 1);
 await as(U.A, () => db.query(`update public.appointments set status = 'cancelled' where id = $1`, [apA]));
 record("cancelar sem motivo é permitido (cancellation_reason opcional)", true);
 await expectError("D não altera atendimento de outro salão (0 linhas)", async () => {
@@ -263,6 +279,53 @@ await new Promise((r) => setTimeout(r, 20));
 await db.query(`update public.clients set notes = 'n' where id = $1`, [C1]);
 const after = (await rows("select updated_at u from public.clients where id = $1", [C1]))[0].u;
 record("updated_at é atualizado automaticamente", after > before);
+
+// ---- cadastro com código de convite
+const signup = (id, meta) => db.query("insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)", [id, id + "@novo.test", JSON.stringify(meta)]);
+const N = (n) => `00000000-0000-0000-0000-0000000001${String(n).padStart(2, "0")}`;
+const member = async (id) => (await rows("select p.display_name, m.role, p.salon_id from public.salon_members m join public.professionals p on p.user_id = m.user_id and p.salon_id = m.salon_id where m.user_id = $1", [id]));
+
+await expectError("sem código configurado, cadastro com código é recusado (falha fechada)", () => signup(N(1), { full_name: "Nova Pessoa", invite_code: "qualquer-coisa" }), /invalid_invite_code/);
+await expectError("código curto não pode ser definido", () => db.query("select private.set_invite_code('curto')"), /pelo menos 8/);
+await db.query("select private.set_invite_code($1)", ["Convite-Teste-123"]);
+record("o código é guardado só como hash (nunca em texto puro)",
+  (await rows("select code_hash from private.invite_codes"))[0].code_hash.length === 64 &&
+  !JSON.stringify(await rows("select * from private.invite_codes")).includes("Convite"));
+
+await expectError("código errado é recusado", () => signup(N(2), { full_name: "Nova Pessoa", invite_code: "errado-errado" }), /invalid_invite_code/);
+record("cadastro recusado não deixa conta nem perfil para trás",
+  (await rows("select 1 from auth.users where id = $1", [N(2)])).length === 0 && (await rows("select 1 from public.profiles where id = $1", [N(2)])).length === 0);
+
+await signup(N(3), { full_name: "  Maria Souza  ", invite_code: "  convite-TESTE-123 " }); // espaços e maiúsculas não importam
+const m3 = await member(N(3));
+record("código certo: entra no salão como profissional, com o nome informado (sem espaços nas pontas)",
+  m3.length === 1 && m3[0].display_name === "Maria Souza" && m3[0].role === "professional" && m3[0].salon_id === S1, JSON.stringify(m3));
+record("a nova conta enxerga os clientes e serviços do salão",
+  (await as(N(3), () => rows("select id from public.clients where id = $1", [C1]))).length === 1 &&
+  (await as(N(3), () => rows("select id from public.services where id = $1", [SA]))).length === 1);
+record("a nova conta NÃO enxerga atendimentos de ninguém (agenda privada)",
+  (await as(N(3), () => rows("select id from public.appointments"))).length === 0);
+await db.query("update public.appointments set status = status"); // nada muda; garante que a tabela segue íntegra
+
+await expectError("nome em branco é recusado", () => signup(N(4), { full_name: "   ", invite_code: "convite-teste-123" }), /invalid_name/);
+await expectError("nome com 1 letra é recusado", () => signup(N(5), { full_name: "A", invite_code: "convite-teste-123" }), /invalid_name/);
+await expectError("nome com mais de 60 caracteres é recusado", () => signup(N(6), { full_name: "x".repeat(61), invite_code: "convite-teste-123" }), /invalid_name/);
+
+await signup(N(7), { full_name: "Sem Convite" });
+record("sem código: a conta nasce SEM acesso (nem salão nem profissional)", (await member(N(7))).length === 0);
+record("sem acesso: não lê clientes, serviços nem atendimentos",
+  (await as(N(7), () => rows("select id from public.clients"))).length === 0 &&
+  (await as(N(7), () => rows("select id from public.services"))).length === 0 &&
+  (await as(N(7), () => rows("select id from public.appointments"))).length === 0);
+
+await expectError("anon não lê a tabela de códigos", () => as(null, () => rows("select * from private.invite_codes")), /permission denied/i);
+await expectError("usuária logada não lê a tabela de códigos", () => as(N(3), () => rows("select * from private.invite_codes")), /permission denied/i);
+await expectError("usuária logada não troca o código", () => as(N(3), () => rows("select private.set_invite_code('outro-codigo-123')")), /permission denied/i);
+
+await db.query("select private.set_invite_code($1)", ["Outro-Codigo-456"]);
+await expectError("depois de trocar o código, o antigo deixa de valer", () => signup(N(8), { full_name: "Antiga Convidada", invite_code: "convite-teste-123" }), /invalid_invite_code/);
+await signup(N(9), { full_name: "Nova Convidada", invite_code: "outro-codigo-456" });
+record("o código novo vale", (await member(N(9))).length === 1);
 
 // ---- funções privadas não expostas ao anon
 await expectError("anon não executa funções do schema private",

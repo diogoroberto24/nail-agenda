@@ -140,7 +140,11 @@ try {
   check("B NÃO agenda em nome da A", Boolean(wrongPro.error), "agendou");
 
   const seeAB = await B.client.from("appointments").select("id").eq("id", apA.data?.id ?? "");
-  check("B enxerga o atendimento da A (agenda compartilhada)", seeAB.data?.length === 1, msg(seeAB.error));
+  check("B NÃO enxerga o atendimento da A (agenda privada)", !seeAB.error && seeAB.data?.length === 0, msg(seeAB.error));
+  const seeAA = await A.client.from("appointments").select("id").eq("id", apA.data?.id ?? "");
+  check("A enxerga o próprio atendimento", seeAA.data?.length === 1, msg(seeAA.error));
+  const seeAllB = await B.client.from("appointments").select("id, professional_id").limit(500);
+  check("B só vê atendimentos da própria profissional", (seeAllB.data ?? []).every((r) => r.professional_id === proB.id), msg(seeAllB.error));
   const editAB = await B.client.from("appointments").update({ status: "confirmed" }).eq("id", apA.data?.id ?? "").select("id");
   check("B NÃO altera atendimento da A", (editAB.data ?? []).length === 0, "alterou");
   const editAA = await A.client.from("appointments").update({ status: "confirmed" }).eq("id", apA.data?.id ?? "").select("id, status");
@@ -177,8 +181,9 @@ try {
     .select("id, start_at, status, price_at_booking, duration_minutes_at_booking, professionals(display_name), services(name)")
     .eq("client_id", cli.id)
     .order("start_at", { ascending: false });
-  check("histórico traz profissional e serviço (relações) e inclui cancelados/pendentes",
-    !hist.error && hist.data.length >= 3 && hist.data.every((h) => h.professionals?.display_name && h.services?.name),
+  // agenda privada: o histórico da cliente mostra só os atendimentos de quem consulta
+  check("histórico traz profissional e serviço (relações) e SÓ os atendimentos de quem consulta",
+    !hist.error && hist.data.length >= 1 && hist.data.every((h) => h.professionals?.display_name && h.services?.name && h.professionals.display_name === proB.display_name),
     msg(hist.error) + " " + JSON.stringify(hist.data?.[0]));
   check("histórico em ordem do mais recente para o mais antigo",
     hist.data?.every((h, i, arr) => i === 0 || arr[i - 1].start_at >= h.start_at));
@@ -189,7 +194,7 @@ try {
   check("cliente arquivada some da lista ativa", activeList.data?.length === 0);
   const archList = await A.client.from("clients").select("id").not("archived_at", "is", null).eq("id", cli.id);
   check("cliente arquivada aparece na lista de arquivadas", archList.data?.length === 1);
-  const stillHist = await A.client.from("appointments").select("id").eq("client_id", cli.id);
+  const stillHist = await admin.from("appointments").select("id").eq("client_id", cli.id);
   check("arquivar não apaga o histórico de atendimentos", stillHist.data?.length >= 3, String(stillHist.data?.length));
   await A.client.from("clients").update({ archived_at: null }).eq("id", cli.id);
 

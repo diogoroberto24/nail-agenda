@@ -63,20 +63,6 @@ export async function searchActiveClients(q: string, limit = 8) {
   return data ?? [];
 }
 
-export type ProfessionalItem = { id: string; user_id: string; display_name: string };
-
-/** Profissionais ativas do salão (a RLS já restringe ao salão da usuária). */
-export async function listProfessionals(): Promise<ProfessionalItem[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("professionals")
-    .select("id, user_id, display_name")
-    .eq("active", true)
-    .order("display_name", { ascending: true });
-  if (error) throw new Error("Não foi possível carregar as profissionais.");
-  return data ?? [];
-}
-
 /**
  * Próximos atendimentos (aguardando confirmação ou confirmados) que ainda não terminaram,
  * do mais cedo ao mais tarde. Passa de hoje para os dias seguintes se hoje já acabou.

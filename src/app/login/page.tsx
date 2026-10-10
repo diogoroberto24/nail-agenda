@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { LoginForm } from "./login-form";
 
@@ -29,6 +30,12 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <Suspense fallback={<LoginForm />}>
         <LoginFormWithNotice searchParams={searchParams} />
       </Suspense>
+      <p className="mt-6 text-center text-[0.95rem] text-taupe-soft">
+        Primeiro acesso?{" "}
+        <Link href="/cadastro" className="inline-flex min-h-11 items-center font-medium text-rose-deep underline">
+          Criar conta
+        </Link>
+      </p>
     </main>
   );
 }

@@ -329,11 +329,14 @@ describe("agenda do dia no fuso do salão", () => {
     expect(zonedDateTimeToUtc("2031-04-01", "23:30").toISOString()).toBe("2031-04-02T02:30:00.000Z");
   });
 
-  it("a colega enxerga o atendimento (agenda compartilhada) mas não o altera", async () => {
+  it("a agenda é privada: a colega NÃO enxerga o atendimento (nem o altera); a dona enxerga", async () => {
     const id = await setup(A, { time: "02:00" });
-    const seen = await B.db.from("appointments").select("id, clients(full_name), services(name), professionals(display_name)").eq("id", id).single();
-    expect(seen.error).toBeNull();
-    expect((seen.data as unknown as { professionals: { display_name: string } }).professionals.display_name).toBeTruthy();
+    const hidden = await B.db.from("appointments").select("id").eq("id", id);
+    expect(hidden.error).toBeNull();
+    expect(hidden.data ?? []).toHaveLength(0);
+    const mine = await A.db.from("appointments").select("id, clients(full_name), services(name), professionals(display_name)").eq("id", id).single();
+    expect(mine.error).toBeNull();
+    expect((mine.data as unknown as { professionals: { display_name: string } }).professionals.display_name).toBeTruthy();
     const edit = await B.db.from("appointments").update({ notes: "x" }).eq("id", id).select("id");
     expect(edit.data ?? []).toHaveLength(0);
   });

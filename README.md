@@ -78,7 +78,7 @@ docs/               documentação do projeto, do Supabase e da publicação
 
 ## Segurança, em resumo
 - Tudo fica atrás de login. Sem sessão, qualquer tela privada leva ao login.
-- Cada profissional cria e edita só os próprios atendimentos, serviços e horários; a agenda e os clientes são compartilhados para consulta.
+- Cada profissional cria e edita só os próprios atendimentos, serviços e horários; a agenda é privada (cada uma vê só os próprios atendimentos); só os clientes e os serviços são compartilhados para consulta.
 - As regras de acesso valem também no banco (RLS), não só nas telas.
 - A chave secreta do Supabase só é usada em scripts na sua máquina.
 - Horários são guardados em UTC e exibidos no fuso de São Paulo.

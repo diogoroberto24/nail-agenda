@@ -358,33 +358,20 @@ test.describe("agenda, início e conta", () => {
     await expect(page).toHaveURL(new RegExp(`data=${fx.today}`));
   });
 
-  test("filtro por profissional e agenda compartilhada (a colega só pode ser consultada)", async ({ page }) => {
+  test("agenda privada: só os atendimentos da própria profissional aparecem, sem filtro por profissional", async ({ page }) => {
     const fx = readFixture();
     const fixa = (p: Page) => p.locator("li").filter({ hasText: fx.clientName }).filter({ has: p.locator("a[href^='/agendamentos/']") });
 
     await page.goto(`/agenda?data=${fx.tomorrow}`);
-    await expect(fixa(page)).toHaveCount(3); // dela (2) + da colega (1)
+    await expect(fixa(page)).toHaveCount(2); // só os dela: o da colega (Alongamento) não aparece
+    await expect(page.getByText("Alongamento")).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Filtrar por profissional" })).toHaveCount(0);
 
-    // atendimento da colega: vê, mas não altera
-    const colega = page.locator("li").filter({ hasText: "Alongamento" }).filter({ hasText: fx.clientName });
-    await expect(colega).toBeVisible();
-    await expect(colega.getByRole("button", { name: "Confirmar" })).toHaveCount(0);
-    await expect(colega.getByRole("button", { name: /Mais ações/ })).toHaveCount(0);
-    await expect(colega.getByRole("link", { name: /Editar atendimento/ })).toHaveCount(0);
-    await expect(colega.getByRole("link", { name: /WhatsApp/ })).toBeVisible();
-
-    await page.getByRole("navigation", { name: "Filtrar por profissional" }).getByRole("link", { name: new RegExp(fx.proB.name) }).click();
-    await expect(page).toHaveURL(new RegExp(`pro=${fx.proB.id}`));
-    await expect(fixa(page)).toHaveCount(1);
-
-    await page.getByRole("navigation", { name: "Filtrar por profissional" }).getByRole("link", { name: /\(você\)/ }).click();
-    await expect(fixa(page)).toHaveCount(2);
-
-    // abrir o atendimento da colega: sem botões de alteração
+    // abrir direto o link do atendimento da colega: não existe para esta profissional
     await page.goto(`/agendamentos/${fx.appointments.awaitingB}`);
-    await expect(page.getByText(/só ela pode alterá-lo/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirmar atendimento" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Editar ou remarcar" })).toHaveCount(0);
+    await expect(page.getByText(/não encontrad|não existe|404/i).first()).toBeVisible();
   });
 
   test("detalhe do atendimento: ações completas e mensagem do WhatsApp", async ({ page }) => {
@@ -417,10 +404,7 @@ test.describe("agenda, início e conta", () => {
     // o atendimento de hoje às 23:00 (criado pela preparação) aparece com a data
     await expect(page.locator("li").filter({ hasText: fx.clientName }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Abrir agenda de hoje" })).toBeVisible();
-    // o filtro por profissional mantém a tela
-    await page.getByRole("navigation", { name: "Filtrar por profissional" }).getByRole("link", { name: new RegExp(fx.proB.name) }).click();
-    await expect(page).toHaveURL(/pro=/);
-    await expect(page.getByRole("heading", { name: "Próximos atendimentos" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Filtrar por profissional" })).toHaveCount(0);
     check();
   });
 

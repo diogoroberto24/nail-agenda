@@ -4,13 +4,13 @@
 
 ## Objetivo
 Sistema web mobile-first de agenda para um salão de unhas, usado por duas profissionais
-(cada uma com seus atendimentos; ambas veem a agenda compartilhada). Área privada, sem
+(cada uma com seus atendimentos; cada uma vê só a própria agenda; clientes e serviços são compartilhados; ver "Agenda privada" abaixo). Área privada, sem
 agendamento público na v1.
 
 ## Requisitos decididos
 - Acesso pelo celular das duas profissionais; mobile-first (não apenas responsivo); PWA instalável.
 - Login por e-mail e senha, com "lembrar de mim". Cadastro público desligado; contas criadas pelo administrador.
-- Agenda compartilhada mostra todos os dados (nome e telefone da cliente) das duas profissionais.
+- (substituído) A agenda era compartilhada; agora é privada: cada profissional vê só os próprios atendimentos (migração 20261010000001).
 - Profissionais diferentes podem atender no mesmo horário (sem bloqueio nem aviso entre elas).
 - A mesma profissional não pode ter dois atendimentos sobrepostos: o sistema AVISA (mostrando a outra cliente e o horário), sem bloquear.
 - Não existe horário de expediente padrão. Disponibilidade (dias, horários, pausas, folgas, férias, bloqueios) é OPCIONAL por profissional: se cadastrada, a agenda mostra horários livres e avisa fora dela; se não, qualquer horário é aceito.
@@ -155,3 +155,10 @@ Aguardamos você! Será um prazer te atender.
 
 ## Próximo passo
 Aguardar validação da Etapa 1 e autorização para a Etapa 2.
+
+## Agenda privada e cadastro (mudança de regra)
+- Decisão: cada profissional vê SOMENTE os próprios atendimentos. Clientes e serviços continuam compartilhados.
+- Banco: migração `supabase/migrations/20261010000001_agenda_privada.sql` troca a política `appointments_select` para `owns_professional(professional_id)`. Os atendimentos da colega continuam guardados, só ficam invisíveis. É idempotente.
+- App: sumiu o filtro "Todas / profissional" da Agenda e do Início (e o parâmetro `?pro=`); números do Início e histórico da cliente passam a ser só dela; abrir o link de atendimento alheio dá "não encontrado".
+- Cadastro: tela `/cadastro` (nome, e-mail, senha de 8+ caracteres, repetir senha e código de convite), link "Criar conta" no login, entra logada; sem confirmação de e-mail. O código é conferido por trigger no banco (migração 20261010000002): certo → entra no salão como profissional com o nome informado; errado → recusado; ausente (API direta/seed) → conta sem acesso. Só o hash do código fica no banco (`private.invite_codes`); troca-se com `select private.set_invite_code('...')`. Sem chave secreta no navegador nem na Vercel.
+- Testes: PGlite (83 verificações), Supabase real (`test:supabase`, `test:integration`) e E2E reescritos para a agenda privada. Os testes no Supabase real só passam DEPOIS de rodar a migração no SQL Editor.

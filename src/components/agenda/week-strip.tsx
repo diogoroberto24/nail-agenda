@@ -6,13 +6,12 @@ import { cn } from "@/lib/utils";
 type WeekStripProps = {
   date: string;
   today: string;
-  pro: string;
   /** atendimentos por data local (YYYY-MM-DD) na semana */
   counts: Record<string, number>;
 };
 
 /** Semana compacta (segunda a domingo): 7 alvos de toque de pelo menos 44 px, cada um com a contagem escrita. Em telas muito estreitas rola um pouco na horizontal. Complementa a lista do dia. */
-export function WeekStrip({ date, today, pro, counts }: WeekStripProps) {
+export function WeekStrip({ date, today, counts }: WeekStripProps) {
   const first = startOfWeek(date, 1);
   const days = Array.from({ length: 7 }, (_, i) => addDays(first, i));
 
@@ -27,7 +26,7 @@ export function WeekStrip({ date, today, pro, counts }: WeekStripProps) {
         return (
           <Link
             key={day}
-            href={agendaHref({ date: day, pro })}
+            href={agendaHref({ date: day })}
             aria-current={selected ? "date" : undefined}
             aria-label={`${formatShortWeekday(day)}, dia ${Number(day.slice(8))}, ${count === 0 ? "sem atendimentos" : count === 1 ? "1 atendimento" : `${count} atendimentos`}`}
             className={cn(

@@ -4,7 +4,7 @@ import { applyRemember, REMEMBER_COOKIE, shouldRemember } from "./cookies";
 import { getSupabaseEnv } from "./env";
 
 /** Rotas acessíveis sem login. */
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/cadastro"];
 
 /**
  * Renova a sessão do Supabase e faz a verificação otimista de acesso:

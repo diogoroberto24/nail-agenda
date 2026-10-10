@@ -13,9 +13,10 @@ Data API **ligada**, "Automatically expose new tables" **desligado** e "Enable a
 ## 2. Autenticação
 No painel: **Authentication**.
 1. **Sign In / Providers → Email:** mantenha o provedor Email ligado.
-2. Procure **Allow new users to sign up** e **desligue**. Assim ninguém cria conta sozinho: as contas são criadas pelo script do passo 7.
+2. Procure **Allow new users to sign up** e **ligue** (necessário para a tela de cadastro). Quem pode de fato entrar no salão é decidido pelo **código de convite**, conferido no banco (passo 5b); sem o código, a conta nasce sem acesso a nada.
 3. Não ative nenhum outro provedor (Google etc.).
-4. Confirmação de e-mail: pode ficar ligada. O script cria as contas já confirmadas.
+4. **Confirm email: desligue**, para a pessoa entrar logo depois de se cadastrar. (Se ficar ligada, o cadastro avisa a administradora e a pessoa não consegue entrar.) No plano gratuito o envio de e-mails do Supabase é bem limitado, por isso não dependemos dele.
+5. **Password → Minimum password length:** 8.
 
 ## 3. Pegar as chaves
 **Project Settings → API Keys** (ou **API**).
@@ -49,6 +50,16 @@ Abra o `.env.local` no editor e preencha as 3 chaves do passo 3. O arquivo já �
 3. Nova query: repita com `supabase/migrations/20261009000003_service_role_grants.sql` (dá ao script de seed permissão nas tabelas; necessário porque "Automatically expose new tables" está desligado).
 
 Rode **uma vez cada, nesta ordem**. Se rodar de novo, dará erro de "já existe" (isso é esperado e não danifica nada).
+
+4. Nova query: `supabase/migrations/20261010000001_agenda_privada.sql` (cada profissional passa a ver só os próprios atendimentos).
+
+## 5b. Cadastro com código de convite
+1. Nova query: `supabase/migrations/20261010000002_cadastro_convite.sql`.
+2. Nova query, com o código que **você** escolher (8 caracteres ou mais; só você e quem receber o convite sabem):
+   `select private.set_invite_code('escolha-um-codigo-aqui');`
+   Para trocar o código mais tarde, rode o mesmo comando com outro valor. O banco guarda só o hash: ninguém consegue ler o código depois.
+3. Quem se cadastra informa nome, e-mail, senha e esse código. Código errado: cadastro recusado. Sem código (chamando a API direto): a conta nasce sem acesso a nada.
+4. Opcional, para os testes automáticos do cadastro com código certo: coloque `SIGNUP_TEST_INVITE_CODE=...` no `.env.local` (nunca na Vercel nem no Git).
 
 Se algum passo der erro, copie a mensagem **sem incluir chaves** e me envie.
 

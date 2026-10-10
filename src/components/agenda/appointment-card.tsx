@@ -11,8 +11,6 @@ import type { AppointmentItem } from "@/lib/data/appointments";
 
 type AppointmentCardProps = {
   item: AppointmentItem;
-  /** o atendimento é da profissional logada: só ela edita e muda o status */
-  mine: boolean;
   /** há outro atendimento da mesma profissional no mesmo horário */
   overlaps: boolean;
   highlighted: boolean;
@@ -22,10 +20,10 @@ type AppointmentCardProps = {
   dateLabel?: string;
 };
 
-export function AppointmentCard({ item, mine, overlaps, highlighted, afterCancelHref, dateLabel }: AppointmentCardProps) {
+export function AppointmentCard({ item, overlaps, highlighted, afterCancelHref, dateLabel }: AppointmentCardProps) {
   const clientName = item.clients?.full_name ?? "Cliente";
   const open = isOpenStatus(item.status);
-  const canEdit = mine && open;
+  const canEdit = open;
   // a mensagem de confirmação só faz sentido enquanto o atendimento ainda vai acontecer
   const message =
     open && item.clients
@@ -57,7 +55,7 @@ export function AppointmentCard({ item, mine, overlaps, highlighted, afterCancel
           </span>
           <span className="block truncate text-lg font-medium text-cocoa">{clientName}</span>
           <span className="block truncate text-sm text-taupe-soft">
-            {item.services?.name ?? "Serviço"} · {item.professionals?.display_name ?? "Profissional"}
+            {item.services?.name ?? "Serviço"}
           </span>
           {overlaps && (
             <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#f4ead5] px-2.5 py-1 text-xs font-medium text-[#6b4e12]">
@@ -81,15 +79,13 @@ export function AppointmentCard({ item, mine, overlaps, highlighted, afterCancel
         </div>
       </div>
 
-      {mine && (
-        <StatusActions
-          appointmentId={item.id}
-          status={item.status}
-          clientName={clientName}
-          variant="card"
-          afterCancelHref={afterCancelHref}
-        />
-      )}
+      <StatusActions
+        appointmentId={item.id}
+        status={item.status}
+        clientName={clientName}
+        variant="card"
+        afterCancelHref={afterCancelHref}
+      />
     </li>
   );
 }

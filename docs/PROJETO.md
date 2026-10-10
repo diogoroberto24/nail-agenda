@@ -95,6 +95,13 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 - Bugs achados pelos testes E2E e corrigidos: (1) o Next 16 mantém telas visitadas montadas e escondidas: ids fixos de campos duplicavam (rótulo apontava para o campo escondido) → useFormIds; (2) por isso cadastros novos reabriam preenchidos e o novo agendamento reaproveitava o identificador de tentativa (seria engolido como reenvio) → formulário zera e gera tentativa nova após salvar; (3) botões da ficha da cliente com 23 px de altura no celular (flex-1 em coluna); (4) link do cliente no detalhe com alvo pequeno; (5) busca trocava _ e % por espaço → agora escapa; (6) avisos de Date.now() na pré-renderização → await connection() em createClient.
 - Documentação: README.md (instalação, comandos, backup, segurança), docs/SUPABASE.md, docs/DEPLOY.md.
 
+## Publicação (2026-10-10)
+- Código: https://github.com/diogoroberto24/nail-agenda (branch main). Projeto na Vercel `nail-agenda` ligado ao repositório: cada push em main gera um deploy novo.
+- Endereço: https://nail-agenda-iota.vercel.app. Variáveis na Vercel: só NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
+- Verificado sem login: /login abre (200); /, /agenda, /clientes, /perfil, /menu e /auth/acesso-negado levam ao login (307); manifesto e os 5 ícones abrem; o código do navegador não contém chave secreta nem variáveis SEED_*; HTTPS com HSTS; produção não exige login da Vercel.
+- NÃO verificado: login real no site publicado (depende de a usuária testar), logs de build (a conexão da Vercel disponível ao assistente não tem permissão de leitura nessa conta).
+- Pendente na usuária: Supabase → Authentication → URL Configuration → Site URL = endereço publicado.
+
 ## Etapas
 1. Fundação — CONCLUÍDA
 2. Identidade visual e casca mobile — CONCLUÍDA (aguardando validação)
@@ -102,7 +109,7 @@ O `next.config.ts` gerado já ativa `cacheComponents` e `partialPrefetching`; ma
 4. Clientes e serviços — CONCLUÍDA no código e nos testes automáticos; falta a validação visual/manual da usuária
 5. Agenda e agendamentos (com aviso de conflito) — CONCLUÍDA no código e nos testes automáticos; falta validação visual/manual da usuária. NÃO inclui horários livres (dependem da tela de Disponibilidade, ainda não construída) nem ações de status (Etapa 6)
 6. Status, WhatsApp e tela Início — CONCLUÍDA no código e nos testes automáticos; falta a validação manual da usuária (a tela Início e as páginas dinâmicas não foram vistas no navegador)
-7. Perfil, PWA, E2E, backup e publicação — CÓDIGO, TESTES E DOCUMENTAÇÃO PRONTOS; falta a publicação na Vercel (aguarda autorização) e a validação manual (troca real de e-mail, instalação no celular)
+7. Perfil, PWA, E2E, backup e publicação — CONCLUÍDA e PUBLICADA em https://nail-agenda-iota.vercel.app (2026-10-10); falta a validação manual da usuária no celular (login no site publicado, instalação, troca real de e-mail) e o ajuste do Site URL no Supabase
 
 ## Pendências e observações
 - `npm audit` reporta 5 vulnerabilidades "high" em `braces`/`micromatch`/`fast-glob`, todas dentro da cadeia de `eslint-config-next` (ferramenta de lint, só desenvolvimento). A correção sugerida (`--force`) faria downgrade para eslint-config-next 14, por isso NÃO foi aplicada. Reavaliar quando houver versão corrigida.

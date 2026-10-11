@@ -13,7 +13,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 /** Ordem que respeita as chaves estrangeiras (usada também na restauração). */
-export const TABLES = ["salons", "salon_members", "professionals", "profiles", "clients", "services", "appointments", "business_hours", "blocked_times"];
+export const TABLES = ["salons", "salon_members", "professionals", "profiles", "clients", "services", "recurrences", "appointments", "business_hours", "blocked_times"];
 const PAGE = 1000;
 
 export function adminFromEnv() {

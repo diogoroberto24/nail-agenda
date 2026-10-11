@@ -41,6 +41,8 @@ export async function cleanup() {
   const { data: clients } = await admin.from("clients").select("id").like("full_name", `${MARK}%`);
   const ids = (clients ?? []).map((c) => c.id);
   if (ids.length) await admin.from("appointments").delete().in("client_id", ids);
+  // a recorrência referencia a cliente e o serviço: vem depois dos atendimentos e antes deles
+  if (ids.length) await admin.from("recurrences").delete().in("client_id", ids);
   await admin.from("services").delete().like("name", `${MARK}%`);
   if (ids.length) await admin.from("clients").delete().in("id", ids);
 }

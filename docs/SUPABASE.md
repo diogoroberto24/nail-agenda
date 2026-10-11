@@ -53,6 +53,9 @@ Rode **uma vez cada, nesta ordem**. Se rodar de novo, dará erro de "já existe"
 
 4. Nova query: `supabase/migrations/20261010000001_agenda_privada.sql` (cada profissional passa a ver só os próprios atendimentos).
 
+## 5d. Recorrência de atendimentos
+Nova query: `supabase/migrations/20261012000001_recorrencias.sql` (tabela `recurrences`, privada de cada profissional, e duas colunas novas em `appointments`). **Rode antes de publicar o código novo**: a ficha da cliente, a lista de clientes e a agenda passam a ler a recorrência.
+
 ## 5c. Aniversário da cliente
 Nova query: `supabase/migrations/20261011000001_aniversario_clientes.sql`. **Rode antes de publicar o código novo**: o app passa a ler as colunas de aniversário, e sem a migração as telas de clientes e o Início dão erro.
 

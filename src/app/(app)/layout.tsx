@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { AuthGate } from "@/components/layout/auth-gate";
 import { BottomNav, BottomNavView } from "@/components/layout/bottom-nav";
 import { NewAppointmentFab } from "@/components/layout/new-appointment-fab";
+import { RecurrenceTopUp } from "@/components/recurrence/recurrence-top-up";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -13,6 +14,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <AuthGate>{children}</AuthGate>
         </Suspense>
       </main>
+      <RecurrenceTopUp />
       {/* usePathname precisa de Suspense em rotas dinâmicas ([id]); o fallback mostra a barra sem item ativo */}
       <Suspense fallback={null}>
         <NewAppointmentFab />

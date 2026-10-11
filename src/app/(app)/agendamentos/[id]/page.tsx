@@ -67,6 +67,16 @@ async function Appointment({ params }: { params: PageProps<"/agendamentos/[id]">
             <dd className="text-right font-medium text-cocoa">{item.services?.name ?? "—"}</dd>
             <dt className="text-taupe-soft">Profissional</dt>
             <dd className="text-right font-medium text-cocoa">{item.professionals?.display_name ?? "—"}</dd>
+            {item.recurrence_id && (
+              <>
+                <dt className="text-taupe-soft">Recorrência</dt>
+                <dd className="text-right font-medium text-cocoa">
+                  <Link href={`/recorrencias/${item.recurrence_id}`} className="inline-flex min-h-11 items-center underline">
+                    Ver recorrência
+                  </Link>
+                </dd>
+              </>
+            )}
             <dt className="text-taupe-soft">Preço</dt>
             <dd className="text-right font-medium text-cocoa">{formatBRL(item.price_at_booking)}</dd>
             <dt className="text-taupe-soft">Cliente</dt>

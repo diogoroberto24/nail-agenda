@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { Cake, CalendarPlus, CircleCheck, History, Pencil } from "lucide-react";
 import { ArchiveButton } from "@/components/clients/archive-button";
+import { RecurrenceSection } from "@/components/recurrence/recurrence-section";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 import { buttonVariants } from "@/components/ui/button";
 import { birthdayText } from "@/lib/clients/birthday";
 import { getClient, getClientHistory } from "@/lib/data/clients";
+import { listActiveRecurrencesOfClient } from "@/lib/data/recurrences";
 import { formatDateTime, formatDuration } from "@/lib/datetime";
 import { formatBRL } from "@/lib/money";
 import { formatBrazilPhone } from "@/lib/phone";
@@ -29,9 +32,15 @@ async function Client({
   searchParams,
 }: Pick<PageProps<"/clientes/[id]">, "params" | "searchParams">) {
   const { id } = await params;
-  const saved = (await searchParams).salvo === "1";
-  const [client, history] = await Promise.all([getClient(id), getClientHistory(id)]);
+  const query = await searchParams;
+  const saved = query.salvo === "1";
+  const recurrenceNotice = recurrenceMessage(query);
+  await connection();
+  const now = new Date();
+  const [client, allHistory, recurrences] = await Promise.all([getClient(id), getClientHistory(id), listActiveRecurrencesOfClient(id)]);
   if (!client) notFound();
+  // os atendimentos futuros de uma recorrência ficam na página da recorrência; o histórico mostra o resto
+  const history = allHistory.filter((a) => !(a.recurrence_id && new Date(a.start_at) > now));
   const archived = client.archived_at !== null;
 
   return (
@@ -43,6 +52,12 @@ async function Client({
           <p role="status" className="flex items-center gap-2 rounded-xl bg-[#e4ede5] px-4 py-3 text-sm font-medium text-[#2f5a3a]">
             <CircleCheck className="size-4" aria-hidden />
             Cadastro salvo.
+          </p>
+        )}
+        {recurrenceNotice && (
+          <p role="status" className="flex items-center gap-2 rounded-xl bg-[#e4ede5] px-4 py-3 text-sm font-medium text-[#2f5a3a]">
+            <CircleCheck className="size-4 shrink-0" aria-hidden />
+            {recurrenceNotice}
           </p>
         )}
         {archived && (
@@ -79,6 +94,8 @@ async function Client({
           </Link>
         )}
 
+        {!archived && <RecurrenceSection clientId={client.id} items={recurrences} />}
+
         <section aria-labelledby="historico" className="space-y-3">
           <h2 id="historico" className="flex items-center gap-2 text-2xl font-semibold text-cocoa">
             <History className="size-5 text-rose-deep" aria-hidden />
@@ -111,4 +128,23 @@ async function Client({
       </div>
     </>
   );
+}
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/** Aviso depois de criar, alterar ou encerrar uma recorrência (vem na URL). */
+function recurrenceMessage(query: Record<string, string | string[] | undefined>): string | null {
+  const kind = first(query.recorrencia);
+  const n = Number(first(query.n) ?? 0);
+  const kept = Number(first(query.k) ?? 0);
+  const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+  if (kind === "criada") return `Recorrência criada: ${plural(n, "atendimento reservado", "atendimentos reservados")} na agenda.`;
+  if (kind === "alterada") return `Recorrência alterada: ${plural(n, "novo atendimento criado", "novos atendimentos criados")}.`;
+  if (kind === "encerrada") {
+    const keptText = kept > 0 ? ` ${plural(kept, "atendimento já confirmado foi mantido", "atendimentos já confirmados foram mantidos")}.` : "";
+    return `Recorrência encerrada: ${plural(n, "atendimento cancelado", "atendimentos cancelados")}.${keptText}`;
+  }
+  return null;
 }

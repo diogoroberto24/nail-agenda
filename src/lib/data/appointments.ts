@@ -16,13 +16,14 @@ export type AppointmentItem = {
   duration_minutes_at_booking: number;
   price_at_booking: string | number;
   notes: string | null;
+  recurrence_id: string | null;
   clients: { id: string; full_name: string; phone: string } | null;
   services: { name: string } | null;
   professionals: { display_name: string } | null;
 };
 
 const APPOINTMENT_SELECT =
-  "id, professional_id, client_id, service_id, start_at, end_at, status, duration_minutes_at_booking, price_at_booking, notes, " +
+  "id, professional_id, client_id, service_id, start_at, end_at, status, duration_minutes_at_booking, price_at_booking, notes, recurrence_id, " +
   "clients(id, full_name, phone), services(name), professionals(display_name)";
 
 /**

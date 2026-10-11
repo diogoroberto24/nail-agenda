@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Plus, SearchX, UserRoundPlus, Users } from "lucide-react";
+import { Plus, Repeat, SearchX, UserRoundPlus, Users } from "lucide-react";
 import { ClientSearch } from "@/components/clients/client-search";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 import { buttonVariants } from "@/components/ui/button";
 import { listClients } from "@/lib/data/clients";
+import { listClientIdsWithActiveRecurrence } from "@/lib/data/recurrences";
 import { formatBrazilPhone } from "@/lib/phone";
 
 export const metadata: Metadata = { title: "Clientes" };
@@ -38,7 +39,7 @@ async function SearchAndList({ searchParams }: { searchParams: PageProps<"/clien
   const params = await searchParams;
   const q = (first(params.q) ?? "").slice(0, 80);
   const archived = first(params.arquivadas) === "1";
-  const clients = await listClients({ q, archived });
+  const [clients, recurrentIds] = await Promise.all([listClients({ q, archived }), listClientIdsWithActiveRecurrence()]);
 
   return (
     <>
@@ -88,7 +89,15 @@ async function SearchAndList({ searchParams }: { searchParams: PageProps<"/clien
           {clients.map((c) => (
             <li key={c.id} className="flex items-center pr-2">
               <Link href={`/clientes/${c.id}`} className="min-w-0 flex-1 px-4 py-3 active:bg-muted">
-                <span className="block truncate font-medium text-cocoa">{c.full_name}</span>
+                <span className="flex items-center gap-2">
+                  <span className="truncate font-medium text-cocoa">{c.full_name}</span>
+                  {recurrentIds.has(c.id) && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-nude px-2 py-0.5 text-xs font-medium text-cocoa">
+                      <Repeat className="size-3" aria-hidden />
+                      Recorrente
+                    </span>
+                  )}
+                </span>
                 <span className="block text-sm text-taupe-soft">{formatBrazilPhone(c.phone)}</span>
               </Link>
               <WhatsAppLink phone={c.phone} name={c.full_name} />

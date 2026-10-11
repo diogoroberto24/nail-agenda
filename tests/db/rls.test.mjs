@@ -35,10 +35,12 @@ await db.exec(readFileSync(MIG + "20261009000003_service_role_grants.sql", "utf8
 await db.exec(readFileSync(MIG + "20261010000001_agenda_privada.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261010000002_cadastro_convite.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261011000001_aniversario_clientes.sql", "utf8"));
+await db.exec(readFileSync(MIG + "20261012000001_recorrencias.sql", "utf8"));
 // as migrações novas são idempotentes: rodar de novo não pode falhar
 await db.exec(readFileSync(MIG + "20261010000001_agenda_privada.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261010000002_cadastro_convite.sql", "utf8"));
 await db.exec(readFileSync(MIG + "20261011000001_aniversario_clientes.sql", "utf8"));
+await db.exec(readFileSync(MIG + "20261012000001_recorrencias.sql", "utf8"));
 record("migrações 0001, 0002 e 0003 executam sem erro", true);
 
 // ---- dados base (superusuária = papel de administração)
@@ -281,6 +283,81 @@ await new Promise((r) => setTimeout(r, 20));
 await db.query(`update public.clients set notes = 'n' where id = $1`, [C1]);
 const after = (await rows("select updated_at u from public.clients where id = $1", [C1]))[0].u;
 record("updated_at é atualizado automaticamente", after > before);
+
+// ---- recorrência (regra privada da profissional + atendimentos gerados)
+const recCols = "salon_id, professional_id, client_id, service_id, frequency, interval_days, start_date, start_time, duration_minutes, price, created_by";
+const newRec = (who, pro, svc, over = {}) => {
+  const v = { frequency: "weekly", interval_days: null, start_date: "2026-11-10", start_time: "10:00", duration_minutes: 40, price: 50, ...over };
+  return as(who, () => db.query(
+    `insert into public.recurrences (${recCols}) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning id`,
+    [S1, pro, C1, svc, v.frequency, v.interval_days, v.start_date, v.start_time, v.duration_minutes, v.price, who],
+  ));
+};
+const recA = (await newRec(U.A, PA, SA)).rows[0].id;
+record("A cria uma recorrência semanal para a própria agenda", Boolean(recA));
+record("a recorrência 'a cada X dias' exige o X", (await newRec(U.A, PA, SA, { frequency: "every_days", interval_days: 10 })).rows.length === 1);
+record("mensal é aceita", (await newRec(U.A, PA, SA, { frequency: "monthly" })).rows.length === 1);
+
+await expectError("'a cada X dias' sem X é recusada", () => newRec(U.A, PA, SA, { frequency: "every_days" }), /check constraint/i);
+await expectError("semanal com X é recusada (X só vale em 'a cada X dias')", () => newRec(U.A, PA, SA, { interval_days: 7 }), /check constraint/i);
+await expectError("X maior que 365 é recusado", () => newRec(U.A, PA, SA, { frequency: "every_days", interval_days: 366 }), /check constraint/i);
+await expectError("X zero é recusado", () => newRec(U.A, PA, SA, { frequency: "every_days", interval_days: 0 }), /check constraint/i);
+await expectError("frequência desconhecida é recusada", () => newRec(U.A, PA, SA, { frequency: "diaria" }), /check constraint/i);
+await expectError("duração zero é recusada", () => newRec(U.A, PA, SA, { duration_minutes: 0 }), /check constraint/i);
+await expectError("preço negativo é recusado", () => newRec(U.A, PA, SA, { price: -1 }), /check constraint/i);
+await expectError("fim antes do início é recusado", () => as(U.A, () => db.query(
+  "insert into public.recurrences (salon_id, professional_id, client_id, service_id, frequency, start_date, end_date, start_time, duration_minutes, price, created_by) values ($1,$2,$3,$4,'weekly','2026-11-10','2026-11-01','10:00',40,50,$5)",
+  [S1, PA, C1, SA, U.A])), /check constraint/i);
+
+await expectError("B NÃO cria recorrência na agenda da A", () => newRec(U.B, PA, SA), /row-level security/i);
+await expectError("B não usa o serviço da A na própria recorrência (serviço é de cada profissional)", () => newRec(U.B, PB, SA), /foreign key/i);
+await expectError("A não cria recorrência em nome da B (created_by é de quem cria)", () => as(U.A, () => db.query(
+  "insert into public.recurrences (salon_id, professional_id, client_id, service_id, frequency, start_date, start_time, duration_minutes, price, created_by) values ($1,$2,$3,$4,'weekly','2026-11-10','10:00',40,50,$5)",
+  [S1, PB, C1, SB, U.A])), /row-level security/i);
+
+const recB = (await newRec(U.B, PB, SB)).rows[0].id;
+record("B cria a própria recorrência", Boolean(recB));
+record("a recorrência é PRIVADA: B não vê a da A", (await as(U.B, () => rows("select id from public.recurrences where id = $1", [recA]))).length === 0);
+record("a recorrência é PRIVADA: A não vê a da B", (await as(U.A, () => rows("select id from public.recurrences where id = $1", [recB]))).length === 0);
+record("cada uma só vê as próprias", (await as(U.B, () => rows("select distinct professional_id from public.recurrences"))).every((r) => r.professional_id === PB));
+record("C (sem salão) e D (outro salão) não veem recorrências",
+  (await as(U.C, () => rows("select id from public.recurrences"))).length === 0 && (await as(U.D, () => rows("select id from public.recurrences"))).length === 0);
+await expectError("anon não lê recorrências", () => as(null, () => rows("select * from public.recurrences")), /permission denied/i);
+
+// alterações permitidas: encerrar, pular datas, fim, observações
+await as(U.A, () => db.query("update public.recurrences set ended_at = now(), skipped_dates = array['2026-11-17']::date[], end_date = '2027-01-01', notes = 'x' where id = $1", [recA]));
+record("A encerra, pula datas, define o fim e anota", (await rows("select ended_at is not null e, skipped_dates s from public.recurrences where id = $1", [recA]))[0].e === true);
+await expectError("A não troca o horário da regra depois de criada (a regra muda criando outra)", () => as(U.A, () => db.query("update public.recurrences set start_time = '11:00' where id = $1", [recA])), /permission denied/i);
+await expectError("A não troca a profissional da regra", () => as(U.A, () => db.query("update public.recurrences set professional_id = $1 where id = $2", [PB, recA])), /permission denied/i);
+await expectError("B não altera a recorrência da A (0 linhas)", async () => {
+  const r = await as(U.B, () => db.query("update public.recurrences set ended_at = now() where id = $1", [recA]));
+  if (r.affectedRows === 0) throw new Error("0 linhas afetadas");
+}, /0 linhas/);
+await expectError("A não apaga recorrência (só encerra)", () => as(U.A, () => db.query("delete from public.recurrences where id = $1", [recA])), /permission denied/i);
+
+// atendimentos gerados pela série
+const recC = (await newRec(U.A, PA, SA)).rows[0].id;
+const insRec = (rec, date, start, who = U.A, pro = PA) => as(who, () => ins(pro, SA, C1, start, 40, 50, { cols: "recurrence_id, occurrence_date", vals: `'${rec}', '${date}'` }));
+const o1 = await insRec(recC, "2026-12-01", "2026-12-01T13:00:00Z");
+record("A gera um atendimento ligado à série", o1.rows.length === 1);
+await expectError("a mesma ocorrência (série + data) não duplica", () => insRec(recC, "2026-12-01", "2026-12-01T13:00:00Z"), /duplicate key|unique/i);
+await expectError("mesma data com outro horário também não duplica", () => insRec(recC, "2026-12-01", "2026-12-01T17:00:00Z"), /duplicate key|unique/i);
+const o2 = await insRec(recC, "2026-12-08", "2026-12-08T13:00:00Z");
+record("outra data da mesma série é aceita", o2.rows.length === 1);
+await as(U.A, () => db.query("update public.appointments set status = 'cancelled' where id = $1", [o2.rows[0].id]));
+await expectError("dia cancelado continua ocupando a ocorrência: a reposição não o recria", () => insRec(recC, "2026-12-08", "2026-12-08T13:00:00Z"), /duplicate key|unique/i);
+await expectError("série sem data de ocorrência é recusada", () => as(U.A, () => ins(PA, SA, C1, "2026-12-15T13:00:00Z", 40, 50, { cols: "recurrence_id", vals: `'${recC}'` })), /check constraint/i);
+await expectError("data de ocorrência sem série é recusada", () => as(U.A, () => ins(PA, SA, C1, "2026-12-15T13:00:00Z", 40, 50, { cols: "occurrence_date", vals: "'2026-12-15'" })), /check constraint/i);
+await expectError("atendimento da A não aponta para a série da B", () => insRec(recB, "2026-12-22", "2026-12-22T13:00:00Z"), /foreign key/i);
+await expectError("A não troca o atendimento de série depois (coluna não é editável)", () => as(U.A, () => db.query("update public.appointments set recurrence_id = null, occurrence_date = null where id = $1", [o1.rows[0].id])), /permission denied/i);
+record("B não vê atendimentos gerados da série da A", (await as(U.B, () => rows("select id from public.appointments where recurrence_id = $1", [recC]))).length === 0);
+record("atendimentos avulsos continuam sem série (podem se repetir no mesmo horário)",
+  (await as(U.A, () => ins(PA, SA, C1, "2026-12-29T13:00:00Z", 40, 50))).rows.length === 1 &&
+  (await as(U.A, () => ins(PA, SA, C1, "2026-12-29T13:00:00Z", 40, 50))).rows.length === 1);
+await expectError("não dá para apagar recorrência que já tem atendimentos (histórico preservado)", () => db.query("delete from public.recurrences where id = $1", [recC]), /foreign key|violates/i);
+record("service_role acessa recurrences e anon não",
+  (await rows("select has_table_privilege('service_role', 'public.recurrences', 'select,insert,update') a, has_table_privilege('anon', 'public.recurrences', 'select') b"))[0].a === true &&
+  (await rows("select has_table_privilege('anon', 'public.recurrences', 'select') b"))[0].b === false);
 
 // ---- aniversário da cliente
 const setBirth = (who, d, m, y) => as(who, () => db.query("update public.clients set birth_day = $1, birth_month = $2, birth_year = $3 where id = $4", [d, m, y, C1]));

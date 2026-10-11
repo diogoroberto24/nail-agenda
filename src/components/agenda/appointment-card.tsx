@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, Pencil, TriangleAlert } from "lucide-react";
+import { CalendarClock, Pencil, Repeat, TriangleAlert } from "lucide-react";
 import { StatusActions } from "@/components/appointments/status-actions";
 import { StatusBadge } from "@/components/status-badge";
 import { WhatsAppLink } from "@/components/whatsapp-link";
@@ -56,6 +56,12 @@ export function AppointmentCard({ item, overlaps, highlighted, afterCancelHref, 
           <span className="block truncate text-lg font-medium text-cocoa">{clientName}</span>
           <span className="block truncate text-sm text-taupe-soft">
             {item.services?.name ?? "Serviço"}
+            {item.recurrence_id && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-nude px-2 py-0.5 align-middle text-xs font-medium text-cocoa">
+                <Repeat className="size-3" aria-hidden />
+                Recorrente
+              </span>
+            )}
           </span>
           {overlaps && (
             <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#f4ead5] px-2.5 py-1 text-xs font-medium text-[#6b4e12]">

@@ -62,6 +62,7 @@ export type ClientHistoryItem = {
   status: AppointmentStatus;
   price_at_booking: string | number;
   duration_minutes_at_booking: number;
+  recurrence_id: string | null;
   professionals: { display_name: string } | null;
   services: { name: string } | null;
 };
@@ -73,7 +74,7 @@ export async function getClientHistory(clientId: string): Promise<ClientHistoryI
   const { data, error } = await supabase
     .from("appointments")
     .select(
-      "id, start_at, status, price_at_booking, duration_minutes_at_booking, professionals(display_name), services(name)",
+      "id, start_at, status, price_at_booking, duration_minutes_at_booking, recurrence_id, professionals(display_name), services(name)",
     )
     .eq("client_id", clientId)
     .order("start_at", { ascending: false })

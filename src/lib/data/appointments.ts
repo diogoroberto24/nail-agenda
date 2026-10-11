@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { buildClientSearchFilter } from "@/lib/clients/search";
 import { isUuid } from "@/lib/data/clients";
 import { pickRecentClients, type RecentClient, type RecentClientRow } from "@/lib/appointments/recent-clients";
+import { limitRecurrencesToWeek } from "@/lib/appointments/home-week";
 import type { AppointmentStatus } from "@/lib/appointments/status";
 
 export type AppointmentItem = {
@@ -67,8 +68,9 @@ export async function searchActiveClients(q: string, limit = 8) {
 /**
  * Próximos atendimentos (aguardando confirmação ou confirmados) que ainda não terminaram,
  * do mais cedo ao mais tarde. Passa de hoje para os dias seguintes se hoje já acabou.
+ * `recurringUntil`: os atendimentos de recorrência só entram se começarem antes desse instante (fim da semana atual).
  */
-export async function listUpcomingAppointments(now: Date, professionalId?: string, limit = 6): Promise<AppointmentItem[]> {
+export async function listUpcomingAppointments(now: Date, professionalId?: string, limit = 6, recurringUntil?: Date): Promise<AppointmentItem[]> {
   const supabase = await createClient();
   let query = supabase
     .from("appointments")
@@ -78,13 +80,14 @@ export async function listUpcomingAppointments(now: Date, professionalId?: strin
     .order("start_at", { ascending: true })
     .limit(limit);
   if (professionalId) query = query.eq("professional_id", professionalId);
+  if (recurringUntil) query = limitRecurrencesToWeek(query, recurringUntil);
   const { data, error } = await query;
   if (error) throw new Error("Não foi possível carregar os próximos atendimentos.");
   return (data ?? []) as unknown as AppointmentItem[];
 }
 
-/** Quantos atendimentos aguardam confirmação, de `from` em diante. */
-export async function countPendingConfirmations(from: Date, professionalId?: string): Promise<number> {
+/** Quantos atendimentos aguardam confirmação, de `from` em diante (os de recorrência só até `recurringUntil`, se informado). */
+export async function countPendingConfirmations(from: Date, professionalId?: string, recurringUntil?: Date): Promise<number> {
   const supabase = await createClient();
   let query = supabase
     .from("appointments")
@@ -92,6 +95,7 @@ export async function countPendingConfirmations(from: Date, professionalId?: str
     .eq("status", "awaiting_confirmation")
     .gte("start_at", from.toISOString());
   if (professionalId) query = query.eq("professional_id", professionalId);
+  if (recurringUntil) query = limitRecurrencesToWeek(query, recurringUntil);
   const { count, error } = await query;
   if (error) throw new Error("Não foi possível contar as confirmações pendentes.");
   return count ?? 0;

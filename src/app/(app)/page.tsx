@@ -17,6 +17,7 @@ import {
   type AppointmentItem,
 } from "@/lib/data/appointments";
 import { listBirthdaysToday } from "@/lib/data/clients";
+import { weekEndUtc } from "@/lib/appointments/home-week";
 import { greetingForHour } from "@/lib/greeting";
 import { addDays, formatLongDateCapitalized, toZonedParts, zonedDateTimeToUtc } from "@/lib/timezone";
 import { firstName } from "@/lib/whatsapp-message";
@@ -38,11 +39,13 @@ async function Home() {
   const greeting = greetingForHour(Number(time.slice(0, 2)));
 
   const dayStart = zonedDateTimeToUtc(today, "00:00");
+  // atendimentos de recorrência só aparecem aqui se forem desta semana (segunda a domingo)
+  const weekEnd = weekEndUtc(today);
   // a RLS já entrega só os atendimentos da própria profissional
   const [todayItems, upcoming, pending, birthdays] = await Promise.all([
     listAppointmentsInRange(dayStart, zonedDateTimeToUtc(addDays(today, 1), "00:00")),
-    listUpcomingAppointments(now, undefined, 6),
-    countPendingConfirmations(dayStart),
+    listUpcomingAppointments(now, undefined, 6, weekEnd),
+    countPendingConfirmations(dayStart, undefined, weekEnd),
     listBirthdaysToday(today),
   ]);
 

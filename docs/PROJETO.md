@@ -174,3 +174,4 @@ Decisões: aniversário com dia e mês obrigatórios e ano opcional; lembrete co
   - Alterar a partir de uma data: a série antiga termina na véspera (cancela só os futuros que aguardam confirmação; confirmados e concluídos ficam) e nasce uma série nova.
   - Encerrar: cancela os futuros que aguardam confirmação e para de repor.
   - Backup/restauração incluem a tabela `recurrences` (antes de `appointments`).
+  - Tela Início: atendimentos de recorrência só aparecem em "Próximos atendimentos" e no contador de confirmações pendentes se forem da SEMANA ATUAL (segunda a domingo); os avulsos não mudam. A Agenda continua mostrando tudo (`src/lib/appointments/home-week.ts`). Num domingo, só entram as de hoje; na segunda a semana nova passa a valer.

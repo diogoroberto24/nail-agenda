@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronRight, LoaderCircle, Plus, Search, UserRound, X } from "lucide-react";
+import { Check, ChevronRight, LoaderCircle, Plus, Search, UserRound, Wand2, X } from "lucide-react";
 import { QuickClientForm } from "@/components/appointments/client-picker";
 import { useDraft } from "@/components/appointments/wizard/draft-context";
 import { StepFooter } from "@/components/appointments/wizard/step-footer";
@@ -20,6 +21,8 @@ type ClientStepProps = {
   initialClients: PickerClient[];
   /** true quando `initialClients` são as recentes; false quando é a lista alfabética de reserva */
   recent: boolean;
+  /** mostra o atalho "Agendar por texto" (só quando a IA está configurada) */
+  aiEnabled?: boolean;
   /** permite injetar as ações nos testes */
   actions?: { search: typeof searchClientsAction; create: typeof createClientAction };
 };
@@ -27,7 +30,7 @@ type ClientStepProps = {
 /**
  * Etapa 1: escolher a cliente. Um toque escolhe e já avança. Busca por nome ou telefone e cadastro rápido.
  */
-export function ClientStep({ initialClients, recent, actions = DEFAULT_ACTIONS }: ClientStepProps) {
+export function ClientStep({ initialClients, recent, aiEnabled = false, actions = DEFAULT_ACTIONS }: ClientStepProps) {
   const id = useFormIds();
   const router = useRouter();
   const { draft, update } = useDraft();
@@ -103,6 +106,20 @@ export function ClientStep({ initialClients, recent, actions = DEFAULT_ACTIONS }
 
   return (
     <div className="space-y-4 px-5">
+      {aiEnabled && !retornoAoResumo && (
+        <Link
+          href="/agendamentos/novo/texto"
+          className="flex min-h-14 items-center gap-3 rounded-2xl border border-rose/60 bg-card px-4 py-2.5 shadow-soft active:bg-muted"
+        >
+          <Wand2 className="size-5 shrink-0 text-rose-deep" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium text-cocoa">Agendar por texto</span>
+            <span className="block text-sm text-taupe-soft">Escreva &quot;Ana sexta 14h pé e mão&quot; e a IA preenche</span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-taupe-soft" aria-hidden />
+        </Link>
+      )}
+
       <div className="relative">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-taupe-soft" aria-hidden />
         <label htmlFor={id("busca")} className="sr-only">

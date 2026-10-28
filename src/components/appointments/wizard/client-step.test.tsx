@@ -211,4 +211,17 @@ describe("ClientStep (etapa 1)", () => {
     await user.click(screen.getByRole("button", { name: "Cancelar cadastro" }));
     expect(screen.getByText("Ana Paula")).toBeInTheDocument();
   });
+
+  it("com IA configurada, oferece o atalho 'Agendar por texto'", () => {
+    setup({ aiEnabled: true });
+    expect(screen.getByRole("link", { name: /Agendar por texto/ })).toHaveAttribute("href", "/agendamentos/novo/texto");
+  });
+
+  it("sem IA configurada (ou voltando do resumo), não mostra o atalho", () => {
+    setup();
+    expect(screen.queryByRole("link", { name: /Agendar por texto/ })).not.toBeInTheDocument();
+    search = "retorno=detalhes";
+    setup({ aiEnabled: true });
+    expect(screen.queryByRole("link", { name: /Agendar por texto/ })).not.toBeInTheDocument();
+  });
 });

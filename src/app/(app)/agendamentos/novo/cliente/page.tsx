@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { ClientStep } from "@/components/appointments/wizard/client-step";
 import { getCurrentProfessional } from "@/lib/auth/session";
+import { isAiConfigured } from "@/lib/ai/model";
 import { listRecentClients, searchActiveClients } from "@/lib/data/appointments";
 import { formatBrazilPhone } from "@/lib/phone";
 
@@ -31,6 +32,7 @@ async function ClientStepData() {
   return (
     <ClientStep
       recent={recent}
+      aiEnabled={isAiConfigured()}
       initialClients={clients.map((c) => ({ id: c.id, fullName: c.fullName, phone: formatBrazilPhone(c.phone) }))}
     />
   );

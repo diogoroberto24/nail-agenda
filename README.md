@@ -9,9 +9,38 @@ com aviso de horário sobreposto, confirmação pelo WhatsApp com mensagem pront
 (confirmar, concluir, não compareceu, cancelar, reabrir) e tela inicial com o resumo do dia.
 Instalável no celular (PWA).
 
+## Agendamento por texto com IA
+A profissional escreve o atendimento como falaria — **"Ana sexta 14h pé e mão"** — e um agente de IA
+identifica cliente, serviço, data e horário. O agendamento **não é gravado pela IA**: a sugestão preenche o
+fluxo de agendamento e a profissional confere e confirma no resumo, com o mesmo botão "Agendar" de sempre
+(com aviso de horário ocupado e proteção contra envio duplicado).
+
+**Como funciona**
+1. A tela (`/agendamentos/novo/texto`) envia o texto a uma Server Action, que confere a sessão.
+2. Um agente (AI SDK + Google Gemini) recebe as instruções, o calendário dos próximos 15 dias e os serviços
+   ativos da profissional, e usa a ferramenta **`buscar_clientes`** (tool calling) para achar a cliente no banco,
+   com a sessão da usuária (a RLS vale também para a IA).
+3. A resposta vem em JSON validado por schema (Zod) e passa por uma **conferência determinística**
+   (`resolveInterpretation`): a cliente precisa ter vindo da busca, o serviço precisa ser da profissional e
+   data/hora precisam ser válidas. Ids inventados pelo modelo são descartados. Datas no passado geram aviso.
+4. Ambiguidade (duas "Ana") vira opções para a profissional escolher; o que faltar é escolhido nas etapas normais.
+
+**Privacidade e segurança**: ao modelo vão só id e nome das clientes (o telefone não sai do servidor); o
+pedido é tratado como dado, não como instrução (proteção contra prompt injection); a chave fica só no servidor e
+o código de IA não vai para o navegador; sem chave configurada, o recurso fica escondido.
+
+**Arquitetura**: `src/lib/ai/model.ts` é o único lugar que conhece o provedor (trocar de Gemini para Claude,
+OpenAI ou Groq é mudar só esse arquivo); `src/lib/ai/booking.ts` tem o agente, sem depender do Next nem do
+Supabase, e é testado com um modelo simulado (`MockLanguageModelV4`), sem chamar a API.
+
+**Para ativar**: crie uma chave gratuita no [Google AI Studio](https://aistudio.google.com/apikey) e coloque em
+`GOOGLE_GENERATIVE_AI_API_KEY` no `.env.local` (e, se quiser na Vercel, como variável de servidor, sem
+`NEXT_PUBLIC_`). No plano gratuito o Google pode usar o conteúdo enviado para melhorar os produtos dele: use-o
+com dados de demonstração e o plano pago com dados reais.
+
 ## Tecnologias
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · Supabase (Postgres, Auth e RLS) ·
-React Hook Form + Zod · Vitest + Testing Library · Playwright · hospedagem na Vercel.
+React Hook Form + Zod · Vitest + Testing Library · Playwright · AI SDK + Google Gemini (tool calling) · hospedagem na Vercel.
 
 ## Instalação e execução local
 Precisa de Node 22 ou superior.
@@ -70,6 +99,7 @@ Em **Menu → Configurações** há o passo a passo para Android (Chrome) e iPho
 src/app/            telas e rotas (login, início, agenda, clientes, serviços, perfil...)
 src/components/     componentes (agenda, formulários, navegação, shadcn/ui)
 src/lib/            regras de negócio e utilitários (fuso, telefone, status, mensagem do WhatsApp...)
+src/lib/ai/         agendamento por texto: escolha do modelo e agente de IA
 supabase/migrations tabelas, regras de segurança (RLS) e permissões, em SQL versionado
 scripts/            seed, backup, restauração e ícones
 tests/              testes de integração (Supabase real), de banco (em memória) e E2E (Playwright)

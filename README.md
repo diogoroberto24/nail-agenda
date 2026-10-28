@@ -22,6 +22,16 @@ Instalável no celular (PWA).
 - **Robustez**: idempotência no agendamento (toque repetido não duplica), aviso de conflito de horário,
   fuso America/Sao_Paulo tratado explicitamente, backup e restauração.
 
+## Telas
+<p align="center">
+  <img src="docs/imagens/nail-inicio.png" width="250" alt="Tela inicial com o resumo do dia, aniversariantes e próximos atendimentos">
+  &nbsp;
+  <img src="docs/imagens/nail-agenda.png" width="250" alt="Agenda do dia com a faixa semanal e os atendimentos">
+  &nbsp;
+  <img src="docs/imagens/nail-agendar-por-texto.png" width="250" alt="Agendar por texto: a IA mostra cliente, serviço, data, horário e observação entendidos">
+</p>
+<p align="center"><sub>Início · Agenda · Agendar por texto com IA — telas reais do sistema, com dados fictícios.</sub></p>
+
 ## Agendamento por texto com IA
 A profissional escreve o atendimento como falaria — **"Ana sexta 14h pé e mão"** — e um agente de IA
 identifica cliente, serviço, data e horário. O agendamento **não é gravado pela IA**: a sugestão preenche o

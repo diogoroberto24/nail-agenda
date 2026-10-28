@@ -1,4 +1,4 @@
-import { generateText, isStepCount, Output, tool, type LanguageModel } from "ai";
+import { generateText, hasToolCall, isStepCount, tool, type LanguageModel } from "ai";
 import { z } from "zod";
 import type { DraftService } from "@/lib/appointments/wizard";
 import { addDays, isValidDateString, isValidTimeString, weekdayOf } from "@/lib/timezone";
@@ -21,7 +21,8 @@ export { BOOKING_TEXT_MAX, type BookingClient, type BookingSuggestion };
 
 const NOTES_MAX = 200;
 const MAX_CANDIDATES = 5;
-const MAX_STEPS = 5;
+const MAX_STEPS = 6;
+const FINISH_TOOL = "concluir_interpretacao";
 
 export type BookingContext = {
   /** data de hoje no fuso do salão (YYYY-MM-DD) */
@@ -72,7 +73,7 @@ export function buildBookingInstructions(ctx: BookingContext): string {
     "Você ajuda uma manicure a marcar atendimentos num salão de unhas no Brasil.",
     `Profissional: ${ctx.professionalName}. Agora são ${ctx.now} de ${WEEKDAYS[weekdayOf(ctx.today)]}, ${ctx.today} (horário de Brasília).`,
     "",
-    "Sua tarefa: ler o pedido da profissional e identificar cliente, serviço, data e horário.",
+    "Sua tarefa: ler o pedido da profissional, identificar cliente, serviço, data e horário e entregar o resultado chamando a ferramenta concluir_interpretacao.",
     "",
     "Regras:",
     "1. Se o pedido citar uma cliente, chame a ferramenta buscar_clientes com o nome (ou parte dele). Pode chamar mais de uma vez, por exemplo só com o primeiro nome.",
@@ -129,12 +130,18 @@ export async function interpretBookingText(text: string, deps: BookingDeps): Pro
     return found.slice(0, MAX_CANDIDATES);
   };
 
-  const { output } = await generateText({
+  // A resposta final chega pela ferramenta concluir_interpretacao (e não por "modo JSON"): assim o agente
+  // funciona em qualquer provedor que suporte tool calling, inclusive os que não aceitam ferramentas e
+  // saída estruturada na mesma requisição.
+  let final: Interpretation | null = null;
+
+  await generateText({
     model: deps.model,
     system: buildBookingInstructions(deps),
     prompt: text.slice(0, BOOKING_TEXT_MAX),
     temperature: 0,
-    stopWhen: isStepCount(MAX_STEPS),
+    toolChoice: "required",
+    stopWhen: [hasToolCall(FINISH_TOOL), isStepCount(MAX_STEPS)],
     tools: {
       buscar_clientes: tool({
         description: "Busca clientes ativas do salão pelo nome (ou parte do nome). Devolve até 5, com id e nome.",
@@ -142,9 +149,18 @@ export async function interpretBookingText(text: string, deps: BookingDeps): Pro
         // ao modelo vão só id e nome: o telefone não sai do servidor
         execute: async ({ termo }) => remember(await deps.searchClients(termo)).map((c) => ({ id: c.id, nome: c.name })),
       }),
+      [FINISH_TOOL]: tool({
+        description: "Entrega o resultado final da interpretação. Chame uma única vez, no fim.",
+        inputSchema: interpretationSchema,
+        execute: async (input) => {
+          final = input;
+          return "ok";
+        },
+      }),
     },
-    output: Output.object({ schema: interpretationSchema }),
   });
+
+  const output: Interpretation = final ?? { clienteId: null, clienteNome: null, servicoId: null, data: null, hora: null, observacoes: null };
 
   // rede de segurança: o modelo citou um nome mas não usou a ferramenta → buscamos nós mesmos
   if (output.clienteNome?.trim() && seen.size === 0) {

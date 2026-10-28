@@ -20,7 +20,7 @@ fluxo de agendamento e a profissional confere e confirma no resumo, com o mesmo 
 2. Um agente (AI SDK + Google Gemini) recebe as instruções, o calendário dos próximos 15 dias e os serviços
    ativos da profissional, e usa a ferramenta **`buscar_clientes`** (tool calling) para achar a cliente no banco,
    com a sessão da usuária (a RLS vale também para a IA).
-3. A resposta vem em JSON validado por schema (Zod) e passa por uma **conferência determinística**
+3. O agente entrega o resultado chamando a ferramenta `concluir_interpretacao`, com entrada validada por schema (Zod). Esse resultado passa por uma **conferência determinística**
    (`resolveInterpretation`): a cliente precisa ter vindo da busca, o serviço precisa ser da profissional e
    data/hora precisam ser válidas. Ids inventados pelo modelo são descartados. Datas no passado geram aviso.
 4. Ambiguidade (duas "Ana") vira opções para a profissional escolher; o que faltar é escolhido nas etapas normais.

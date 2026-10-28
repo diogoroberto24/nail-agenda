@@ -115,11 +115,11 @@ Testes da parte 1: 210 unidade/componente, 56 integração (Supabase real, inclu
 
 ## Etapa 9 — agendamento por texto com IA (branch feat/ia-agendamento-por-texto)
 - Rota `/agendamentos/novo/texto` dentro do layout do novo agendamento (usa o mesmo rascunho). Atalho "Agendar por texto" no topo da etapa Cliente, só quando a IA está configurada e não se está voltando do resumo.
-- Agente: AI SDK 7 (`generateText` + `Output.object` + ferramenta `buscar_clientes`, até 5 passos, temperatura 0). Provedor isolado em `src/lib/ai/model.ts` (Gemini via `@ai-sdk/google`; modelo em `AI_MODEL`, padrão gemini-3.5-flash).
+- Agente: AI SDK 7 (`generateText` com as ferramentas `buscar_clientes` e `concluir_interpretacao`, `toolChoice: required`, para ao concluir ou em 6 passos, temperatura 0). O resultado chega pela ferramenta final, e não por modo JSON, porque nem todo modelo aceita ferramentas e saída estruturada na mesma requisição. Provedor isolado em `src/lib/ai/model.ts` (Gemini via `@ai-sdk/google`; modelo em `AI_MODEL`, padrão gemini-3.5-flash).
 - Decidido: a IA só sugere; nada é gravado por ela. A sugestão preenche o rascunho e leva à primeira etapa incompleta ou ao resumo. Conferência determinística descarta ids não vindos da busca/serviços de outra profissional e data/hora inválidas; datas no passado ou a mais de 1 ano geram aviso.
 - Privacidade: ao modelo vão id e nome das clientes (sem telefone); instruções contra prompt injection; chave só no servidor; código de IA ausente do bundle do navegador (conferido no build).
 - Erros: limite do provedor (429/quota) mostra mensagem própria; qualquer outra falha sugere usar o passo a passo.
-- Testes: 15 do agente com modelo simulado (`ai/test`), 7 da tela, 2 do atalho. Bateria: 413 testes unitários, lint, typecheck e build aprovados.
+- Testes: 17 do agente com modelo simulado (`ai/test`), 7 da tela, 2 do atalho. Bateria: 415 testes unitários, lint, typecheck e build aprovados.
 - NÃO verificado: chamadas reais ao Gemini (sem chave no ambiente de desenvolvimento do assistente); qualidade das interpretações com textos reais da usuária.
 
 ## Etapas

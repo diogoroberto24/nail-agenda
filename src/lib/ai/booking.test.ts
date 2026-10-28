@@ -26,7 +26,7 @@ const usage = {
   outputTokens: { total: 10, text: 10, reasoning: undefined },
 };
 
-/** Modelo simulado: primeiro pede a busca de clientes, depois devolve o JSON final. */
+/** Modelo simulado: primeiro pede a busca de clientes, depois entrega o resultado pela ferramenta final. */
 function scriptedModel(searchTerm: string | null, finalOutput: Interpretation) {
   const steps = [];
   if (searchTerm) {
@@ -38,8 +38,8 @@ function scriptedModel(searchTerm: string | null, finalOutput: Interpretation) {
     });
   }
   steps.push({
-    content: [{ type: "text" as const, text: JSON.stringify(finalOutput) }],
-    finishReason: { unified: "stop" as const, raw: undefined },
+    content: [{ type: "tool-call" as const, toolCallId: "call-2", toolName: "concluir_interpretacao", input: JSON.stringify(finalOutput) }],
+    finishReason: { unified: "tool-calls" as const, raw: undefined },
     usage,
     warnings: [],
   });
@@ -158,6 +158,30 @@ describe("interpretBookingText (agente com modelo simulado)", () => {
     const user = JSON.stringify(prompt.find((m) => m.role === "user"));
     expect(user).toContain("a".repeat(300));
     expect(user).not.toContain("a".repeat(301));
+  });
+});
+
+describe("interpretBookingText: laço do agente", () => {
+  it("para assim que a interpretação é entregue e exige ferramenta em todo passo", async () => {
+    const model = scriptedModel("Ana", { ...empty, clienteId: "c-ana" });
+    await interpretBookingText("Ana", { ...ctx, model, searchClients: vi.fn().mockResolvedValue([ana]) });
+    expect(model.doGenerateCalls).toHaveLength(2);
+    expect(model.doGenerateCalls[0].toolChoice).toEqual({ type: "required" });
+  });
+
+  it("se o modelo nunca concluir, devolve sugestão vazia em vez de quebrar", async () => {
+    const searchClients = vi.fn().mockResolvedValue([]);
+    const looping = new MockLanguageModelV4({
+      doGenerate: {
+        content: [{ type: "tool-call", toolCallId: "x", toolName: "buscar_clientes", input: JSON.stringify({ termo: "Ana" }) }],
+        finishReason: { unified: "tool-calls", raw: undefined },
+        usage,
+        warnings: [],
+      },
+    });
+    const r = await interpretBookingText("Ana", { ...ctx, model: looping, searchClients });
+    expect(looping.doGenerateCalls.length).toBe(6);
+    expect(r).toMatchObject({ client: null, service: null, date: "", time: "" });
   });
 });
 

@@ -1,13 +1,26 @@
 # Nail Agenda
 
+![Next.js](https://img.shields.io/badge/Next.js-16-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e) ![IA](https://img.shields.io/badge/IA-Gemini%20%2B%20tool%20calling-8e75b2)
+![Testes](https://img.shields.io/badge/testes-415%20aprovados-2ea44f)
+
 Agenda privada, feita para o celular, para um salão de unhas com duas profissionais. Cada uma atende
 as suas clientes, e as duas enxergam a agenda completa do salão. Sem agendamento público: as
-profissionais marcam tudo, dentro de uma área com login.
+profissionais marcam tudo, dentro de uma área com login. **Em uso real, publicada na Vercel.**
 
 **Funciona assim:** cadastro de clientes (compartilhado), serviços e preços de cada profissional, agenda do dia
 com aviso de horário sobreposto, confirmação pelo WhatsApp com mensagem pronta, status do atendimento
 (confirmar, concluir, não compareceu, cancelar, reabrir) e tela inicial com o resumo do dia.
 Instalável no celular (PWA).
+
+### Destaques técnicos
+- **Agente de IA com tool calling**: agendamento a partir de uma frase ("Ana sexta 14h pé e mão"), com validação
+  determinística da resposta do modelo (detalhes abaixo).
+- **Segurança em camadas**: RLS no Postgres, autorização revalidada em toda Server Action, chaves só no servidor.
+- **Regras de negócio testáveis**: lógica separada do Next.js, com 415 testes unitários e de componentes,
+  testes de integração contra o Supabase real, testes de banco/RLS e testes E2E em telas de celular (Playwright).
+- **Robustez**: idempotência no agendamento (toque repetido não duplica), aviso de conflito de horário,
+  fuso America/Sao_Paulo tratado explicitamente, backup e restauração.
 
 ## Agendamento por texto com IA
 A profissional escreve o atendimento como falaria — **"Ana sexta 14h pé e mão"** — e um agente de IA
@@ -24,6 +37,17 @@ fluxo de agendamento e a profissional confere e confirma no resumo, com o mesmo 
    (`resolveInterpretation`): a cliente precisa ter vindo da busca, o serviço precisa ser da profissional e
    data/hora precisam ser válidas. Ids inventados pelo modelo são descartados. Datas no passado geram aviso.
 4. Ambiguidade (duas "Ana") vira opções para a profissional escolher; o que faltar é escolhido nas etapas normais.
+
+```mermaid
+flowchart LR
+    A[Profissional escreve o pedido] --> B[Server Action<br/>confere a sessão]
+    B --> C[Agente Gemini]
+    C -- buscar_clientes --> D[(Supabase<br/>com RLS)]
+    D --> C
+    C -- concluir_interpretacao --> E[Validação<br/>determinística]
+    E --> F[Rascunho do agendamento]
+    F --> G[Profissional confere<br/>e confirma]
+```
 
 **Privacidade e segurança**: ao modelo vão só id e nome das clientes (o telefone não sai do servidor); o
 pedido é tratado como dado, não como instrução (proteção contra prompt injection); a chave fica só no servidor e
@@ -114,3 +138,7 @@ docs/               documentação do projeto, do Supabase e da publicação
 - Horários são guardados em UTC e exibidos no fuso de São Paulo.
 
 Documentação do projeto (decisões, etapas e pendências): [docs/PROJETO.md](docs/PROJETO.md).
+
+## Autor
+**Diogo Roberto** — desenvolvedor full-stack, estudante de Análise e Desenvolvimento de Sistemas (FIAP).
+[LinkedIn](https://www.linkedin.com/in/diogo-roberto-b56899317/) · [GitHub](https://github.com/diogoroberto24)
